@@ -64,7 +64,7 @@ export default function Login() {
         <form onSubmit={formik.handleSubmit} className="space-y-5">
           {/* Email Field */}
           <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
+            <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-muted-foreground">
                 <User size={18} />
@@ -87,7 +87,7 @@ export default function Login() {
 
           {/* Password Field */}
           <div className="space-y-2">
-            <Label htmlFor="password">Password *</Label>
+            <Label htmlFor="password">Password <span className="text-red-500">*</span></Label>
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-muted-foreground">
                 <Lock size={18} />

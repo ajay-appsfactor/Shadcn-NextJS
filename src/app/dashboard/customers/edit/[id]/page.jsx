@@ -106,7 +106,7 @@ export default function EditCustomerPage() {
   return (
       <div className="p-4">
         <div>
-          <h2 className="text-lg font-bold">Edit Customer - ID: {id}</h2>
+          <h2 className="text-lg font-bold">Edit Customer - ID : {id}</h2>
         </div>
 
         {/* Checkbox */}
