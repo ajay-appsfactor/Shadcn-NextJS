@@ -16,7 +16,6 @@ import { toast } from "react-toastify";
 
 const AddCustomerPage = () => {
   const router = useRouter();
-  const [tabIndex, setTabIndex] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const togglePassword = () => setShowPassword(!showPassword);
 

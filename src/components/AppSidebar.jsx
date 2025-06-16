@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Home,
   Users,
@@ -27,6 +29,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { Button } from "@/components/ui/button"
+import { usePathname, useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+import { useState } from "react";
 
 const items = [
   {
@@ -57,6 +63,29 @@ const items = [
 ];
 
 const AppSidebar = () => {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Handle Logout
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      const res = await fetch("/api/auth/logout", {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Failed to logout");
+      toast.success("Logged out successfully!");
+      router.push("/login");
+      router.refresh();
+    } catch (err) {
+      toast.error("Logout failed");
+      console.error("Error during logout", err);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="py-4">
@@ -101,7 +130,11 @@ const AppSidebar = () => {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem>Account</DropdownMenuItem>
                 <DropdownMenuItem>Setting</DropdownMenuItem>
-                <DropdownMenuItem>Sign out</DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Button onClick={handleLogout} disabled={isLoggingOut} className="cursor-pointer" variant="destructive">
+                    {isLoggingOut ? "Logging out..." : "Logout"}
+                  </Button>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

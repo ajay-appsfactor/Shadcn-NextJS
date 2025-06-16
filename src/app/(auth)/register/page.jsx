@@ -89,7 +89,8 @@ export default function Register() {
         {/* Email & Password */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email *</Label>
+            
+            <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
             <Input
               id="email"
               type="email"
@@ -99,7 +100,7 @@ export default function Register() {
             {renderError("email")}
           </div>
           <div className="relative space-y-1.5">
-            <Label htmlFor="password">Password *</Label>
+            <Label htmlFor="password">Password <span className="text-red-500">*</span></Label>
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
@@ -119,12 +120,12 @@ export default function Register() {
         {/* First & Last Name */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-1.5">
-            <Label htmlFor="firstname">First Name *</Label>
+            <Label htmlFor="firstname">First Name <span className="text-red-500">*</span></Label>
             <Input id="firstname" type="text" {...inputProps("firstname")} />
             {renderError("firstname")}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="lastname">Last Name *</Label>
+            <Label htmlFor="lastname">Last Name <span className="text-red-500">*</span></Label>
             <Input id="lastname" type="text" {...inputProps("lastname")} />
             {renderError("lastname")}
           </div>
@@ -132,14 +133,14 @@ export default function Register() {
 
         {/* Company */}
         <div className="space-y-1.5">
-          <Label htmlFor="company">Company *</Label>
+          <Label htmlFor="company">Company <span className="text-red-500">*</span></Label>
           <Input id="company" type="text" {...inputProps("company")} />
           {renderError("company")}
         </div>
 
         {/* Address */}
         <div className="space-y-1.5">
-          <Label htmlFor="address">Address *</Label>
+          <Label htmlFor="address">Address <span className="text-red-500">*</span></Label>
           <Input id="address" type="text" {...inputProps("address")} />
           {renderError("address")}
         </div>
@@ -149,7 +150,7 @@ export default function Register() {
           {["city", "state", "country"].map((field) => (
             <div key={field} className="space-y-1.5">
               <Label htmlFor={field}>
-                {field[0].toUpperCase() + field.slice(1)} *
+                {field[0].toUpperCase() + field.slice(1)} <span className="text-red-500">*</span>
               </Label>
               <Input id={field} type="text" {...inputProps(field)} />
               {renderError(field)}
@@ -160,22 +161,22 @@ export default function Register() {
         {/* Zip, Phone, About */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-1.5">
-            <Label htmlFor="zip">Zip Code *</Label>
+            <Label htmlFor="zip">Zip Code <span className="text-red-500">*</span></Label>
             <Input id="zip" type="text" {...inputProps("zip")} />
             {renderError("zip")}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="phone">Phone *</Label>
+            <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
             <Input id="phone" type="text" {...inputProps("phone")} />
             {renderError("phone")}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="about">How did you hear about us? *</Label>
+            <Label htmlFor="about">How did you hear about us? <span className="text-red-500">*</span></Label>
             <Select
               value={formik.values.about}
               onValueChange={(value) => formik.setFieldValue("about", value)}
             >
-              <SelectTrigger id="about">
+              <SelectTrigger id="about" className="w-[180]">
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent>
