@@ -203,7 +203,7 @@ export default function TableList() {
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [sorting, setSorting] = useState([]);
   const [activeRow, setActiveRow] = useState(null);
-
+  // const [users, setUsers] = useState([]);
   const [debouncedSearch] = useDebounce(globalFilter, 500);
 
   const { users, totalCount, loading } = useFetchCustomers({
@@ -230,13 +230,13 @@ export default function TableList() {
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 10, // Require 10px movement to start dragging
+        distance: 10,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250, 
-        tolerance: 5, 
+        delay: 250,
+        tolerance: 5,
       },
     }),
     useSensor(KeyboardSensor)
@@ -304,12 +304,12 @@ export default function TableList() {
         size: 30,
       },
       {
-        id: "id", // explicitly added
+        id: "id",
         accessorKey: "id",
         header: "ID",
       },
       {
-        id: "first_name", // added id
+        id: "first_name",
         accessorKey: "first_name",
         header: "FIRST NAME",
       },
@@ -365,6 +365,7 @@ export default function TableList() {
     },
     manualPagination: true,
     manualSorting: true,
+    pageCount: Math.ceil(totalCount / pageSize),
     onPaginationChange: (updater) => {
       const { pageIndex: newPageIndex, pageSize: newPageSize } =
         typeof updater === "function"
@@ -399,6 +400,8 @@ export default function TableList() {
   // Generate pagination controls with ellipsis
   const paginationItems = useMemo(() => {
     const totalPages = Math.ceil(totalCount / pageSize);
+    if (totalPages <= 1) return [];
+
     const current = pageIndex + 1;
     const pages = [];
 
@@ -431,7 +434,7 @@ export default function TableList() {
   }, []);
 
   const handleDragEnd = useCallback(
-    (event) => {
+    async (event) => {
       const { active, over } = event;
       setActiveRow(null);
 
@@ -441,12 +444,43 @@ export default function TableList() {
 
         if (oldIndex !== -1 && newIndex !== -1) {
           const newUsers = arrayMove(users, oldIndex, newIndex);
-          // setUsers(newUsers);
+
+          // ✅ FIXED: use state to update the UI
+          setUsers(newUsers);
+
+          const reordered = newUsers.map((user, index) => ({
+            id: user.id,
+            order: index,
+          }));
+
+          await fetch("/api/dashboard/customers/reorder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(reordered),
+          });
         }
       }
     },
     [users]
   );
+
+  // const handleDragEnd = useCallback(
+  //   (event) => {
+  //     const { active, over } = event;
+  //     setActiveRow(null);
+
+  //     if (active && over && active.id !== over.id) {
+  //       const oldIndex = users.findIndex((user) => user.id === active.id);
+  //       const newIndex = users.findIndex((user) => user.id === over.id);
+
+  //       if (oldIndex !== -1 && newIndex !== -1) {
+  //         const newUsers = arrayMove(users, oldIndex, newIndex);
+  //         // setUsers(newUsers);
+  //       }
+  //     }
+  //   },
+  //   [users]
+  // );
 
   // Export functions
   const handleExport = (type) => {
@@ -684,11 +718,15 @@ export default function TableList() {
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    onClick={() => table.previousPage()}
+                    onClick={() => {
+                      if (pageIndex > 0) {
+                        const newPage = pageIndex - 1;
+                        setPageIndex(newPage);
+                        updateUrlParams("page", newPage + 1);
+                      }
+                    }}
                     className={
-                      table.getCanPreviousPage()
-                        ? ""
-                        : "pointer-events-none opacity-50"
+                      pageIndex > 0 ? "" : "pointer-events-none opacity-50"
                     }
                     href="#"
                   />
@@ -717,9 +755,15 @@ export default function TableList() {
 
                 <PaginationItem>
                   <PaginationNext
-                    onClick={() => table.nextPage()}
+                    onClick={() => {
+                      if (pageIndex + 1 < Math.ceil(totalCount / pageSize)) {
+                        const newPage = pageIndex + 1;
+                        setPageIndex(newPage);
+                        updateUrlParams("page", newPage + 1);
+                      }
+                    }}
                     className={
-                      table.getCanNextPage()
+                      pageIndex + 1 < Math.ceil(totalCount / pageSize)
                         ? ""
                         : "pointer-events-none opacity-50"
                     }
