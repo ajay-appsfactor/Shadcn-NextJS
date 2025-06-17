@@ -3,7 +3,8 @@ export const metadata = {
   description: "View and manage customer information",
 };
 
-import CustomerList from "@/components/CustomerList";
+// import CustomerList from "@/components/CustomerList";
+import TableList from "@/components/TableList";
 import Link from "next/link";
 import React from "react";
 
@@ -20,7 +21,8 @@ const GetCustomers = () => {
         </Link>
       </div>
       <div>
-        <CustomerList />
+        {/* <CustomerList /> */}
+        <TableList />
       </div>
     </div>
   );

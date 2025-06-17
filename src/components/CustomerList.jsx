@@ -1,16 +1,46 @@
+// npm install @tanstack/react-table
+// npm install papaparse xlsx
+
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useDebounce } from "use-debounce";
+import { ChevronDown, Ellipsis, Download } from "lucide-react";
 import dayjs from "dayjs";
+import { Label } from "@/components/ui/label";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
   flexRender,
 } from "@tanstack/react-table";
-
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   SquarePen,
   ArrowDownWideNarrow,
@@ -35,8 +65,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuGroup,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 export default function CustomerList() {
   const router = useRouter();
@@ -51,13 +90,13 @@ export default function CustomerList() {
       : 0;
 
   const [users, setUsers] = useState([]);
+  const [sorting, setSorting] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
   const [pageIndex, setPageIndex] = useState(initialPageIndex);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [debouncedSearch] = useDebounce(globalFilter, 500);
-  const [sorting, setSorting] = useState([]);
 
   const updateUrlParams = (key, value) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -68,6 +107,13 @@ export default function CustomerList() {
     }
     router.replace(`${pathname}?${params.toString()}`);
   };
+
+  const sortableId = useId();
+  const sensors = useSensors(
+    useSensor(MouseSensor, {}),
+    useSensor(TouchSensor, {}),
+    useSensor(KeyboardSensor, {})
+  );
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -172,11 +218,13 @@ export default function CustomerList() {
         typeof updater === "function"
           ? updater({ pageIndex, pageSize })
           : updater;
+
       setPageIndex(next.pageIndex);
       setPageSize(next.pageSize);
       updateUrlParams("page", next.pageIndex + 1);
       updateUrlParams("pageSize", next.pageSize);
     },
+
     onSortingChange: (updater) => {
       setSorting(updater);
       updateUrlParams("sortBy", updater.map((s) => s.id).join(","));
@@ -233,6 +281,18 @@ export default function CustomerList() {
     return pageNumbers;
   }, [pageIndex, totalCount, pageSize]);
 
+  // Handle Drag
+  function handleDragEnd(event) {
+    const { active, over } = event;
+    if (active && over && active.id !== over.id) {
+      setData((data) => {
+        const oldIndex = dataIds.indexOf(active.id);
+        const newIndex = dataIds.indexOf(over.id);
+        return arrayMove(data, oldIndex, newIndex);
+      });
+    }
+  }
+
   return (
     <div className="container mx-auto mt-6 px-4">
       {/* Search & Page Size */}
@@ -243,147 +303,230 @@ export default function CustomerList() {
           className="w-full md:w-1/3 rounded-md border border-gray-300 px-4 py-2 text-sm"
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
-          disabled={loading}
+          // disabled={loading}
+          style={{ cursor: 'text' }} 
         />
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Rows per page:</span>
-          <Select
-            value={String(pageSize)}
-            onValueChange={(value) => {
-              const newSize = Number(value);
-              setPageSize(newSize);
-              setPageIndex(0);
-              updateUrlParams("pageSize", value);
-              updateUrlParams("page", "1");
-            }}
-          >
-            <SelectTrigger className="w-[80px] h-8">
-              <SelectValue placeholder="Page Size">{pageSize}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {[5, 10, 20, 50].map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <span className="hidden lg:inline">Customize Columns</span>
+                <ChevronDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {table
+                .getAllColumns()
+                .filter(
+                  (column) =>
+                    typeof column.accessorFn !== "undefined" &&
+                    column.getCanHide()
+                )
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* List */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Ellipsis className="hidden lg:inline" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+              align="end"
+              sideOffset={4}
+            >
+              <DropdownMenuGroup>
+                <DropdownMenuItem>
+                  {" "}
+                  <Download /> Export all to .json
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  {" "}
+                  <Download /> Export all to .csv
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  {" "}
+                  <Download /> Export all to .xlsx
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          {/* Always render thead */}
-          <thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
-                    className="cursor-pointer px-4 py-2 text-left font-medium text-sm text-muted-foreground"
-                  >
-                    <div className="flex items-center gap-1">
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                      {renderSortIcon(header.column)}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
+      <div className="overflow-x-auto rounded-lg border">
+        <DndContext
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis]}
+          onDragEnd={handleDragEnd}
+          sensors={sensors}
+          id={sortableId}
+        >
+          <Table className="min-w-full divide-y divide-gray-200">
+            {/* Always render thead */}
+            <TableHeader className="bg-muted sticky top-0 z-10">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      onClick={header.column.getToggleSortingHandler()}
+                      className="cursor-pointer select-none px-4 py-2 text-left text-sm font-medium text-muted-foreground"
+                    >
+                      <div className="flex items-center gap-1">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                        {renderSortIcon(header.column)}
+                      </div>
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
 
-          <tbody>
-            {loading ? (
-              // Show skeleton rows while loading
-              [...Array(5)].map((_, i) => (
-                <tr key={i} className="animate-pulse">
-                  {[...Array(columns.length)].map((_, j) => (
-                    <td key={j} className="px-4 py-2">
-                      <div className="h-4 w-full bg-muted rounded-md" />
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : users.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={columns.length}
-                  className="text-center py-4 text-muted-foreground"
-                >
-                  No customers found.
-                </td>
-              </tr>
-            ) : (
-              table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-2 text-sm">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+            <TableBody>
+              {loading ? (
+                // Show skeleton rows while loading
+                [...Array(5)].map((_, i) => (
+                  <TableRow key={i} className="animate-pulse">
+                    {[...Array(columns.length)].map((_, j) => (
+                      <td key={j} className="px-4 py-2">
+                        <div className="h-4 w-full bg-muted rounded-md" />
+                      </td>
+                    ))}
+                  </TableRow>
+                ))
+              ) : users.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="text-center py-4 text-muted-foreground"
+                  >
+                    No customers found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id} className="hover:bg-gray-50">
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className="px-4 py-2 text-sm">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </DndContext>
       </div>
 
-      {/* Pagination */}
-      <Pagination className="mt-6">
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              onClick={() => table.previousPage()}
-              className={
-                table.getCanPreviousPage()
-                  ? ""
-                  : "pointer-events-none opacity-50"
-              }
-              href="#"
-            />
-          </PaginationItem>
+      <div className="flex items-center justify-between px-4 mt-6">
+        <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
+          {table.getFilteredSelectedRowModel().rows.length} of{" "}
+          {table.getFilteredRowModel().rows.length} row(s) selected.
+        </div>
+        {/* Pagination */}
+        <div className="flex w-full items-center gap-8 lg:w-fit">
+          <div className="hidden items-center gap-2 lg:flex">
+            <Label htmlFor="rows-per-page" className="text-sm font-medium">
+              Rows per page
+            </Label>
+            <Select
+              value={`${table.getState().pagination.pageSize}`}
+              onValueChange={(value) => {
+                table.setPageSize(Number(value));
+              }}
+            >
+              <SelectTrigger size="sm" className="w-20" id="rows-per-page">
+                <SelectValue
+                  placeholder={table.getState().pagination.pageSize}
+                />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[5, 10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="ml-auto flex items-center gap-2 lg:ml-0">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => table.previousPage()}
+                    className={
+                      table.getCanPreviousPage()
+                        ? ""
+                        : "pointer-events-none opacity-50"
+                    }
+                    href="#"
+                  />
+                </PaginationItem>
 
-          {paginationItems.map((page, index) =>
-            page === "left-ellipsis" || page === "right-ellipsis" ? (
-              <PaginationItem key={index}>
-                <PaginationEllipsis />
-              </PaginationItem>
-            ) : (
-              <PaginationItem key={index}>
-                <PaginationLink
-                  href="#"
-                  isActive={page === pageIndex + 1}
-                  onClick={() => {
-                    setPageIndex(page - 1);
-                    updateUrlParams("page", page.toString());
-                  }}
-                >
-                  {page}
-                </PaginationLink>
-              </PaginationItem>
-            )
-          )}
+                {paginationItems.map((page, index) =>
+                  page === "left-ellipsis" || page === "right-ellipsis" ? (
+                    <PaginationItem key={index}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={index}>
+                      <PaginationLink
+                        href="#"
+                        isActive={page === pageIndex + 1}
+                        onClick={() => {
+                          setPageIndex(page - 1);
+                          updateUrlParams("page", page.toString());
+                        }}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                )}
 
-          <PaginationItem>
-            <PaginationNext
-              onClick={() => table.nextPage()}
-              className={
-                table.getCanNextPage() ? "" : "pointer-events-none opacity-50"
-              }
-              href="#"
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => table.nextPage()}
+                    className={
+                      table.getCanNextPage()
+                        ? ""
+                        : "pointer-events-none opacity-50"
+                    }
+                    href="#"
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

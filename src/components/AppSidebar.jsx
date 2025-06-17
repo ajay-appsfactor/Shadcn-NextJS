@@ -3,9 +3,6 @@
 import {
   Home,
   Users,
-  Calendar,
-  Search,
-  Settings,
   User2,
   ChevronUp,
 } from "lucide-react";
@@ -44,21 +41,6 @@ const items = [
     title: "Customers",
     url: "/dashboard/customers",
     icon: Users,
-  },
-  {
-    title: "Calendar",
-    url: "#",
-    icon: Calendar,
-  },
-  {
-    title: "Search",
-    url: "#",
-    icon: Search,
-  },
-  {
-    title: "Settings",
-    url: "#",
-    icon: Settings,
   },
 ];
 
