@@ -91,21 +91,27 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      if (abortControllerRef.current) abortControllerRef.current.abort();
+
+      // Cancel any previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
       try {
-        const sortBy = sorting.map((s) => s.id).join(",");
-        const sortOrder = sorting
-          .map((s) => (s.desc ? "desc" : "asc"))
-          .join(",");
+        const sortBy = sorting.length
+          ? sorting.map((s) => s.id).join(",")
+          : "sort_order";
+        const sortOrder = sorting.length
+          ? sorting.map((s) => (s.desc ? "desc" : "asc")).join(",")
+          : "asc";
 
         const params = new URLSearchParams({
           page: String(pageIndex + 1),
           limit: String(pageSize),
-          search: debouncedSearch,
+          search: debouncedSearch || "",
           sortBy,
           sortOrder,
         });
@@ -117,9 +123,10 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
             cache: "no-store",
           }
         );
-        if (!res.ok) throw new Error("Failed to fetch users");
-        const data = await res.json();
 
+        if (!res.ok) throw new Error("Failed to fetch users");
+
+        const data = await res.json();
         setUsers(data.users || []);
         setTotalCount(data.totalCount || 0);
       } catch (err) {
@@ -132,10 +139,19 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
     };
 
     fetchData();
-    return () => abortControllerRef.current?.abort();
-  }, [pageIndex, pageSize, debouncedSearch, JSON.stringify(sorting)]);
 
-  return { users, totalCount, loading };
+    // Cleanup on unmount or dependency change
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, [
+    pageIndex,
+    pageSize,
+    debouncedSearch,
+    sorting.map((s) => `${s.id}:${s.desc ? "desc" : "asc"}`).join("|"),
+  ]);
+
+  return { users, totalCount, loading, setUsers };
 }
 
 function DraggableTableRow({ row }) {
@@ -151,7 +167,7 @@ function DraggableTableRow({ row }) {
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    ...(transform && { transform: CSS.Transform.toString(transform) }),
     transition,
     opacity: isDragging ? 0.8 : 1,
     zIndex: isDragging ? 1 : 0,
@@ -172,7 +188,9 @@ function DraggableTableRow({ row }) {
             <Button
               variant="ghost"
               size="icon"
-              className="cursor-grab hover:bg-transparent text-muted-foreground size-7"
+              className={`cursor-grab hover:bg-transparent text-muted-foreground size-7 ${
+                isDragging ? "cursor-grabbing" : ""
+              }`}
               {...attributes}
               {...listeners}
             >
@@ -206,7 +224,7 @@ export default function TableList() {
   // const [users, setUsers] = useState([]);
   const [debouncedSearch] = useDebounce(globalFilter, 500);
 
-  const { users, totalCount, loading } = useFetchCustomers({
+  const { users, totalCount, loading, setUsers } = useFetchCustomers({
     pageIndex,
     pageSize,
     debouncedSearch,
@@ -433,54 +451,86 @@ export default function TableList() {
     setActiveRow(event.active.id);
   }, []);
 
-  const handleDragEnd = useCallback(
-    async (event) => {
-      const { active, over } = event;
-      setActiveRow(null);
+  // Update handleDragEnd function
+const handleDragEnd = useCallback(
+  async (event) => {
+    const { active, over } = event;
+    setActiveRow(null);
 
-      if (active && over && active.id !== over.id) {
-        const oldIndex = users.findIndex((user) => user.id === active.id);
-        const newIndex = users.findIndex((user) => user.id === over.id);
+    if (active && over && active.id !== over.id) {
+      const oldIndex = users.findIndex((user) => user.id === active.id);
+      const newIndex = users.findIndex((user) => user.id === over.id);
 
-        if (oldIndex !== -1 && newIndex !== -1) {
-          const newUsers = arrayMove(users, oldIndex, newIndex);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        // Optimistic update
+        const newUsers = arrayMove(users, oldIndex, newIndex);
+        setUsers(newUsers);
 
-          // ✅ FIXED: use state to update the UI
-          setUsers(newUsers);
-
-          const reordered = newUsers.map((user, index) => ({
-            id: user.id,
-            order: index,
-          }));
-
-          await fetch("/api/dashboard/customers/reorder", {
+        try {
+          // Send only the moved item's new position
+          const response = await fetch("/api/dashboard/customers/reorder", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(reordered),
+            body: JSON.stringify({
+              id: active.id,
+              newOrder: newIndex
+            }),
           });
+
+          if (!response.ok) {
+            throw new Error("Failed to update order");
+          }
+        } catch (error) {
+          console.error("Reorder error:", error);
+          // Revert if API call fails
+          setUsers([...users]);
         }
       }
-    },
-    [users]
-  );
+    }
+  },
+  [users, setUsers]
+);
 
-  // const handleDragEnd = useCallback(
-  //   (event) => {
-  //     const { active, over } = event;
-  //     setActiveRow(null);
+//   const handleDragEnd = useCallback(
+//     async (event) => {
+//       const { active, over } = event;
+//       setActiveRow(null);
 
-  //     if (active && over && active.id !== over.id) {
-  //       const oldIndex = users.findIndex((user) => user.id === active.id);
-  //       const newIndex = users.findIndex((user) => user.id === over.id);
+//       if (active && over && active.id !== over.id) {
+//         const oldIndex = users.findIndex((user) => user.id === active.id);
+//         const newIndex = users.findIndex((user) => user.id === over.id);
 
-  //       if (oldIndex !== -1 && newIndex !== -1) {
-  //         const newUsers = arrayMove(users, oldIndex, newIndex);
-  //         // setUsers(newUsers);
-  //       }
-  //     }
-  //   },
-  //   [users]
-  // );
+//         if (oldIndex !== -1 && newIndex !== -1) {
+//           // Update local state first for immediate UI feedback
+//           const newUsers = arrayMove(users, oldIndex, newIndex);
+//           setUsers(newUsers);
+
+//           try {
+//             // Send update to server
+//             const reordered = newUsers.map((user, index) => ({
+//               id: user.id,
+//               order: index,
+//             }));
+
+//             const response = await fetch("/api/dashboard/customers/reorder", {
+//               method: "POST",
+//               headers: { "Content-Type": "application/json" },
+//               body: JSON.stringify(reordered),
+//             });
+
+//             if (!response.ok) {
+//               throw new Error("Failed to update order");
+//             }
+//           } catch (error) {
+//             console.error("Reorder error:", error);
+//             // Revert if API call fails
+//             setUsers([...users]);
+//           }
+//         }
+//       }
+//     },
+//     [users, setUsers]
+//   );
 
   // Export functions
   const handleExport = (type) => {

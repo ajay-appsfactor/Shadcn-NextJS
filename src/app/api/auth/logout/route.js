@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
-// import { destroyAuthCookie } from '@/lib/auth';
-
-// DELETE method 
 export async function DELETE() {
-    const response = NextResponse.json({ message: 'Logout successful' }, { status: 200 });
-    response.cookies.set('token', '', {
-        httpOnly: true,
-        path: '/',
-        maxAge: 0,
-    });
-    return response;
+  const cookieStore = cookies();
+  cookieStore.set('token', '', {
+    httpOnly: true,
+    path: '/',
+    maxAge: 0,
+  });
+
+  return NextResponse.json({ message: 'Logout successful' }, { status: 200 });
 }

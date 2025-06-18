@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Home,
-  Users,
-  User2,
-  ChevronUp,
-} from "lucide-react";
+import { Home, Users, User2, ChevronUp } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -26,10 +21,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const items = [
   {
@@ -45,9 +40,28 @@ const items = [
 ];
 
 const AppSidebar = () => {
+  const [user, setUser] = useState(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Fetch user info
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (!res.ok) throw new Error("User not authenticated");
+        const data = await res.json();
+        console.log(data);
+        setUser(data.user);
+      } catch (err) {
+        // console.error("Failed to load user", err);
+        toast.error("Please login first");
+        router.push("/login");
+      }
+    };
+    getUser();
+  }, []);
 
   // Handle Logout
   const handleLogout = async () => {
@@ -68,6 +82,7 @@ const AppSidebar = () => {
       setIsLoggingOut(false);
     }
   };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="py-4">
@@ -106,14 +121,21 @@ const AppSidebar = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton>
-                  <User2 /> John Doe <ChevronUp className="ml-auto" />
+                  <User2 />
+                  {user ? user.email : "Loading..."}
+                  <ChevronUp className="ml-auto" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem>Account</DropdownMenuItem>
                 <DropdownMenuItem>Setting</DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Button onClick={handleLogout} disabled={isLoggingOut} className="cursor-pointer" variant="destructive">
+                  <Button
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    className="cursor-pointer"
+                    variant="destructive"
+                  >
                     {isLoggingOut ? "Logging out..." : "Logout"}
                   </Button>
                 </DropdownMenuItem>

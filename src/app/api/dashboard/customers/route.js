@@ -149,7 +149,7 @@ export async function GET(req) {
   const offset = (page - 1) * limit;
 
   const search = searchParams.get("search") || "";
-  const sortBy = searchParams.get("sortBy") || "id";
+  const sortBy = searchParams.get("sortBy") || 'sort_order';
   const sortOrder = searchParams.get("sortOrder") || "asc";
 
   // Validate allowed sort columns
@@ -160,13 +160,14 @@ export async function GET(req) {
     "email",
     "company",
     "created_at",
+    "sort_order"
   ];
-  const orderBy = validSorts.includes(sortBy) ? sortBy : "id";
+  const orderBy = validSorts.includes(sortBy) ? sortBy : "sort_order"; 
   const orderDirection = sortOrder === "desc" ? "DESC" : "ASC";
 
   try {
     const queryText = `
-      SELECT * FROM users
+      SELECT *,sort_order FROM users
       WHERE 
         first_name ILIKE $1 OR 
         last_name ILIKE $1 OR 
