@@ -16,7 +16,7 @@ const registerSchema = yup.object().shape({
   city: yup.string().required("City is required"),
   state: yup.string().required("State is required"),
   country: yup.string().required("Country is required"),
-  zip: yup.string().matches(/^\d{6}$/, "Invalid ZIP code").required("Zip is required"),
+  zip: yup.string().matches(/^\d{5}$/, "Invalid ZIP code").required("Zip is required"),
   phone: yup.string().required("Phone number is required"),
   about: yup.string().required("About is required"),
 });

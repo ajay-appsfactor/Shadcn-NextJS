@@ -14,7 +14,6 @@ import {
   ArrowUpWideNarrow,
   SquarePen,
   GripVertical,
-  EllipsisVertical,
 } from "lucide-react";
 
 import {
@@ -77,7 +76,6 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -168,20 +166,14 @@ function DraggableTableRow({ row }) {
     id: row.original.id,
   });
 
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.5 : 1,
-    };
-    
-  // const style = {
-  //   ...(transform && { transform: CSS.Transform.toString(transform) }),
-  //   transition,
-  //   opacity: isDragging ? 0.8 : 1,
-  //   zIndex: isDragging ? 1 : 0,
-  //   position: "relative",
-  //   backgroundColor: isDragging ? "var(--background)" : undefined,
-  // };
+  const style = {
+    ...(transform && { transform: CSS.Transform.toString(transform) }),
+    transition,
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 1 : 0,
+    position: "relative",
+    backgroundColor: isDragging ? "var(--background)" : undefined,
+  };
 
   return (
     <TableRow
@@ -229,6 +221,7 @@ export default function TableList() {
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [sorting, setSorting] = useState([]);
   const [activeRow, setActiveRow] = useState(null);
+  // const [users, setUsers] = useState([]);
   const [debouncedSearch] = useDebounce(globalFilter, 500);
 
   const { users, totalCount, loading, setUsers } = useFetchCustomers({
@@ -362,34 +355,16 @@ export default function TableList() {
         id: "actions",
         header: "ACTIONS",
         enableSorting: false,
-        cell: ({row}) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="data-[state=open]:bg-muted text-muted-foreground flex size-8 cursor-pointer"
-                size="icon"
-              >
-                <EllipsisVertical />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-32">
-              <DropdownMenuItem
-                onClick={() =>
-                  router.push(`/dashboard/customers/edit/${row.original.id}`)
-                }
-                aria-label={`Edit customer ${row.original.id}`}
-              >
-                Edit
-              </DropdownMenuItem>
-              {/* <DropdownMenuItem>Make a copy</DropdownMenuItem>
-              <DropdownMenuItem>Favorite</DropdownMenuItem> */}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-500">
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        cell: ({ row }) => (
+          <button
+            onClick={() =>
+              router.push(`/dashboard/customers/edit/${row.original.id}`)
+            }
+            className="text-blue-500 hover:text-blue-700"
+            aria-label={`Edit customer ${row.original.id}`}
+          >
+            <SquarePen size={18} />
+          </button>
         ),
       },
     ],
@@ -440,7 +415,7 @@ export default function TableList() {
     return <ChevronsUpDown size={16} />;
   };
 
-  //  pagination with ellipsis
+  // Generate pagination controls with ellipsis
   const paginationItems = useMemo(() => {
     const totalPages = Math.ceil(totalCount / pageSize);
     if (totalPages <= 1) return [];
@@ -477,45 +452,85 @@ export default function TableList() {
   }, []);
 
   // Update handleDragEnd function
-  const handleDragEnd = useCallback(
-    async (event) => {
-      const { active, over } = event;
-      setActiveRow(null);
+const handleDragEnd = useCallback(
+  async (event) => {
+    const { active, over } = event;
+    setActiveRow(null);
 
-      if (active && over && active.id !== over.id) {
-        const oldIndex = users.findIndex((user) => user.id === active.id);
-        const newIndex = users.findIndex((user) => user.id === over.id);
+    if (active && over && active.id !== over.id) {
+      const oldIndex = users.findIndex((user) => user.id === active.id);
+      const newIndex = users.findIndex((user) => user.id === over.id);
 
-        if (oldIndex !== -1 && newIndex !== -1) {
-          // Optimistic update
-          const newUsers = arrayMove(users, oldIndex, newIndex);
-          setUsers(newUsers);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        // Optimistic update
+        const newUsers = arrayMove(users, oldIndex, newIndex);
+        setUsers(newUsers);
 
-          try {
-            // Send only the moved item's new position
-            const response = await fetch("/api/dashboard/customers/reorder", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                id: active.id,
-                newOrder: newIndex,
-              }),
-            });
+        try {
+          // Send only the moved item's new position
+          const response = await fetch("/api/dashboard/customers/reorder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: active.id,
+              newOrder: newIndex
+            }),
+          });
 
-            if (!response.ok) {
-              throw new Error("Failed to update order");
-            }
-          } catch (error) {
-            console.error("Reorder error:", error);
-            // Revert if API call fails
-            setUsers([...users]);
+          if (!response.ok) {
+            throw new Error("Failed to update order");
           }
+        } catch (error) {
+          console.error("Reorder error:", error);
+          // Revert if API call fails
+          setUsers([...users]);
         }
       }
-    },
-    [users, setUsers]
-  );
+    }
+  },
+  [users, setUsers]
+);
 
+//   const handleDragEnd = useCallback(
+//     async (event) => {
+//       const { active, over } = event;
+//       setActiveRow(null);
+
+//       if (active && over && active.id !== over.id) {
+//         const oldIndex = users.findIndex((user) => user.id === active.id);
+//         const newIndex = users.findIndex((user) => user.id === over.id);
+
+//         if (oldIndex !== -1 && newIndex !== -1) {
+//           // Update local state first for immediate UI feedback
+//           const newUsers = arrayMove(users, oldIndex, newIndex);
+//           setUsers(newUsers);
+
+//           try {
+//             // Send update to server
+//             const reordered = newUsers.map((user, index) => ({
+//               id: user.id,
+//               order: index,
+//             }));
+
+//             const response = await fetch("/api/dashboard/customers/reorder", {
+//               method: "POST",
+//               headers: { "Content-Type": "application/json" },
+//               body: JSON.stringify(reordered),
+//             });
+
+//             if (!response.ok) {
+//               throw new Error("Failed to update order");
+//             }
+//           } catch (error) {
+//             console.error("Reorder error:", error);
+//             // Revert if API call fails
+//             setUsers([...users]);
+//           }
+//         }
+//       }
+//     },
+//     [users, setUsers]
+//   );
 
   // Export functions
   const handleExport = (type) => {
@@ -614,7 +629,7 @@ export default function TableList() {
                       <TableHead
                         key={`header-${header.id}`}
                         onClick={header.column.getToggleSortingHandler()}
-                        // className="cursor-pointer px-4 py-2 text-left text-sm font-medium text-muted-foreground"
+                        className="cursor-pointer px-4 py-2 text-left text-sm font-medium text-muted-foreground"
                       >
                         <div className="flex items-center gap-1">
                           {flexRender(
@@ -813,6 +828,3 @@ export default function TableList() {
     </div>
   );
 }
-
-
-

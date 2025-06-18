@@ -1,7 +1,11 @@
 
 
-Delete Coumn
+Delete Coulmn
 ALTER TABLE your_table_name DROP COLUMN column_name;
+Update Coulmn
+ALTER TABLE customers ADD COLUMN updated_at TIMESTAMP DEFAULT now();
+
+
 
 
 Admin

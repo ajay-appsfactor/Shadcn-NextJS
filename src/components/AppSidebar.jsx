@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Users, User2, ChevronUp } from "lucide-react";
+import {Home, Users,User2, ChevronUp, UserRound, LogOut, Settings } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -115,27 +115,36 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-gray-200 dark:border-gray-800 px-4 py-3 bg-muted">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  <User2 />
-                  {user ? user.email : "Loading..."}
-                  <ChevronUp className="ml-auto" />
+                <SidebarMenuButton className="flex items-center gap-3 text-sm font-medium text-muted-foreground hover:text-foreground transition">
+                  <UserRound className="w-5 h-5 text-muted-foreground" />
+                  <span className="truncate">
+                    {user ? user.email : "Loading..."}
+                  </span>
+                  <ChevronUp className="ml-auto w-4 h-4 opacity-70" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>Account</DropdownMenuItem>
-                <DropdownMenuItem>Setting</DropdownMenuItem>
-                <DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem className="flex items-center gap-2 hover:bg-muted cursor-pointer">
+                  <UserRound className="w-4 h-4" />
+                  Account
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex items-center gap-2 hover:bg-muted cursor-pointer">
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem className="p-0">
                   <Button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="cursor-pointer"
-                    variant="destructive"
+                    
+                    className="w-full justify-start rounded-none text-sm bg-rose-400 cursor-pointer"
                   >
+                    <LogOut className="w-4 h-4 mr-2" />
                     {isLoggingOut ? "Logging out..." : "Logout"}
                   </Button>
                 </DropdownMenuItem>

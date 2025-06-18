@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button"
 import AppSidebar from "@/components/AppSidebar";
+import Link from "next/link";
 
 export default function Layout({ children }) {
   return (
@@ -22,14 +23,12 @@ export default function Layout({ children }) {
               size="sm"
               className="hidden sm:flex"
             >
-              <a
-                href="https://github.com/shadcn-ui/ui/tree/main/apps/v4/app/(examples)/dashboard"
-                rel="noopener noreferrer"
-                target="_blank"
+              <Link
+                href="/dashboard"
                 className="dark:text-foreground"
               >
                 GitHub
-              </a>
+              </Link>
             </Button>
           </div>
         </div>

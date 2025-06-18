@@ -1,10 +1,12 @@
 "use client";
 
+import { Eye, EyeOff } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import { useRouter } from "next/navigation";
 import addCustomerSchema from "@/validation/addCustomerSchema";
+import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
@@ -42,8 +44,13 @@ export default function EditCustomerPage() {
           throw new Error("Failed to fetch customer");
         }
         const data = await response.json();
-        console.log(data)
-        formik.setValues(data);
+        console.log(data);
+
+        const sanitizedData = Object.fromEntries(
+          Object.entries(data).map(([key, value]) => [key, value ?? ""])
+        );
+
+        formik.setValues(sanitizedData);
       } catch (error) {
         toast.error("Failed to load customer data");
         console.error(error);
@@ -73,26 +80,25 @@ export default function EditCustomerPage() {
       sendinvoice: "",
       conformance: "",
       password: "",
-      sfirstname: "",
-      slastname: "",
-      scompany: "",
-      saddress: "",
-      scity: "",
-      sstate: "",
-      scountry: "",
-      szip: "",
-      sphone: "",
-      smobile: "",
+      shipping_firstname: "",
+      shipping_lastname: "",
+      shipping_company: "",
+      shipping_address: "",
+      shipping_city: "",
+      shipping_state: "",
+      shipping_country: "",
+      shipping_zip: "",
+      shipping_phone: "",
+      shipping_mobile: "",
       terms: "",
       freight: "",
       note: "",
     },
     validationSchema: addCustomerSchema,
     onSubmit: async (values, { resetForm }) => {
-      // console.log(values);
+      console.log(values);
       try {
-        console.log(values);
-        const res = await fetch(`/api/customers/${id}`, {
+        const res = await fetch(`/api/dashboard/customers/${id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -116,7 +122,7 @@ export default function EditCustomerPage() {
   });
   const inputProps = (name) => ({
     name,
-    value: formik.values[name],
+    value: formik.values[name] ?? "",
     onChange: formik.handleChange,
     onBlur: formik.handleBlur,
   });
@@ -129,8 +135,14 @@ export default function EditCustomerPage() {
 
   return (
     <div className="p-4">
-      <div>
+      <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-bold">Edit Customer - ID : {id}</h2>
+        <Link
+          href="/dashboard/customers"
+          className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition"
+        >
+          Back
+        </Link>
       </div>
 
       {/* Checkbox */}
@@ -158,7 +170,8 @@ export default function EditCustomerPage() {
             </label>
             <input
               type="email"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
+              name="email"
+              className="lowercase mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
               {...inputProps("email")}
             />
             {renderError("email")}
@@ -170,15 +183,16 @@ export default function EditCustomerPage() {
             </label>
             <div className="relative">
               <input
+                name="password"
                 type={showPassword ? "text" : "password"}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 pr-10 focus:outline-none focus:ring focus:ring-blue-200"
                 {...inputProps("password")}
               />
               <span
-                onClick={togglePassword}
-                className="absolute top-1/2 right-3 transform -translate-y-1/2 cursor-pointer"
+                className="absolute right-3 top-[13px] cursor-pointer text-muted-foreground"
+                onClick={() => setShowPassword(!showPassword)}
               >
-                {renderError("password")}
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </span>
             </div>
           </div>
@@ -203,6 +217,7 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
+                  name="first_name"
                   {...inputProps("first_name")}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -218,6 +233,7 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
+                  name="last_name"
                   {...inputProps("last_name")}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -234,6 +250,7 @@ export default function EditCustomerPage() {
               </label>
               <input
                 type="text"
+                name="company"
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 {...inputProps("company")}
               />
@@ -246,6 +263,7 @@ export default function EditCustomerPage() {
               </label>
               <input
                 type="text"
+                name="address"
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 {...inputProps("address")}
               />
@@ -258,6 +276,7 @@ export default function EditCustomerPage() {
                   City <span className="text-red-500">*</span>
                 </label>
                 <input
+                  name="city"
                   type="text"
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                   {...inputProps("city")}
@@ -271,6 +290,7 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
+                  name="state"
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                   {...inputProps("state")}
                 />
@@ -282,6 +302,7 @@ export default function EditCustomerPage() {
                   Country <span className="text-red-500">*</span>
                 </label>
                 <input
+                  name="country"
                   type="text"
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                   {...inputProps("country")}
@@ -298,6 +319,7 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
+                  name="zip"
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                   {...inputProps("zip")}
                 />
@@ -346,11 +368,6 @@ export default function EditCustomerPage() {
                 onChange={formik.handleChange}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
               />
-              {formik.touched.sendinvoice && formik.errors.sendinvoice && (
-                <p className="text-red-600 text-sm mt-1">
-                  {formik.errors.sendinvoice}
-                </p>
-              )}
             </div>
 
             {/* Certificate of Conformance */}
@@ -384,8 +401,8 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
-                  name="sfirstname"
-                  value={formik.values.sfirstname}
+                  name="shipping_firstname"
+                  value={formik.values.shipping_firstname}
                   onChange={formik.handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -396,8 +413,8 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
-                  name="slastname"
-                  value={formik.values.slastname}
+                  name="shipping_lastname"
+                  value={formik.values.shipping_lastname}
                   onChange={formik.handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -410,8 +427,8 @@ export default function EditCustomerPage() {
               </label>
               <input
                 type="text"
-                name="scompany"
-                value={formik.values.scompany}
+                name="shipping_company"
+                value={formik.values.shipping_company}
                 onChange={formik.handleChange}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
               />
@@ -424,8 +441,8 @@ export default function EditCustomerPage() {
               </label>
               <input
                 type="text"
-                name="saddress"
-                value={formik.values.saddress}
+                name="shipping_address"
+                value={formik.values.shipping_address}
                 onChange={formik.handleChange}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
               />
@@ -439,8 +456,8 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
-                  name="scity"
-                  value={formik.values.scity}
+                  name="shipping_city"
+                  value={formik.values.shipping_city}
                   onChange={formik.handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -451,8 +468,8 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
-                  name="sstate"
-                  value={formik.values.sstate}
+                  name="shipping_state"
+                  value={formik.values.shipping_state}
                   onChange={formik.handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -463,8 +480,8 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
-                  name="scountry"
-                  value={formik.values.scountry}
+                  name="shipping_country"
+                  value={formik.values.shipping_country}
                   onChange={formik.handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -479,8 +496,8 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
-                  name="szip"
-                  value={formik.values.szip}
+                  name="shipping_zip"
+                  value={formik.values.shipping_zip}
                   onChange={formik.handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -491,8 +508,8 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
-                  name="sphone"
-                  value={formik.values.sphone}
+                  name="shipping_phone"
+                  value={formik.values.shipping_phone}
                   onChange={formik.handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -503,8 +520,8 @@ export default function EditCustomerPage() {
                 </label>
                 <input
                   type="text"
-                  name="smobile"
-                  value={formik.values.smobile}
+                  name="shipping_mobile"
+                  value={formik.values.shipping_mobile}
                   onChange={formik.handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -584,7 +601,7 @@ export default function EditCustomerPage() {
             disabled={formik.isSubmitting}
             className="bg-blue-600 text-white px-4 py-2 cursor-pointer rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-             {formik.isSubmitting ? "Updating..." : "Update Customer"}
+            {formik.isSubmitting ? "Updating..." : "Update Customer"}
           </button>
           <button
             type="button"

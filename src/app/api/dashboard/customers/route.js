@@ -8,8 +8,8 @@ export async function POST(req) {
     const data = await req.json();
 
     const {
-      firstname,
-      lastname,
+      first_name,
+      last_name,
       company,
       address,
       city,
@@ -20,16 +20,16 @@ export async function POST(req) {
       mobile,
       email,
       password,
-      sfirstname,
-      slastname,
-      scompany,
-      saddress,
-      scity,
-      sstate,
-      szip,
-      scountry,
-      sphone,
-      smobile,
+      shipping_firstname,
+      shipping_lastname,
+      shipping_company,
+      shipping_address,
+      shipping_city,
+      shipping_state,
+      shipping_country,
+      shipping_zip,
+      shipping_phone,
+      shipping_mobile,
       sendinvoice,
       conformance,
       terms,
@@ -40,21 +40,73 @@ export async function POST(req) {
     // Hash password
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
-    // Create table if not exists
+    // User Table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS customer (
+      CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        billing_firstname TEXT,
-        billing_lastname TEXT,
-        billing_company TEXT,
-        billing_address TEXT,
-        billing_city TEXT,
-        billing_state TEXT,
-        billing_zip TEXT,
-        billing_country TEXT,
-        billing_phone TEXT,
-        billing_mobile TEXT,
-        billing_email TEXT,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(100) NOT NULL,
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100),
+        company VARCHAR(100),
+        address TEXT,
+        city VARCHAR(100),
+        state VARCHAR(100),
+        country VARCHAR(100),
+        zip VARCHAR(20),
+        phone VARCHAR(20),
+        about TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Insert user
+    const userData = await pool.query(
+      `INSERT INTO users
+        (email, password, first_name, last_name, company, address, city, state, country, zip, phone, about)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [
+        email,
+        hashedPassword,
+        first_name,
+        last_name,
+        company,
+        address,
+        city,
+        state,
+        country,
+        zip,
+        phone,
+        about,
+      ]
+    );
+
+    const user = userData.rows[0];
+    console.log("customer user:", userData);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User could not be created" },
+        { status: 500 }
+      );
+    }
+
+    // Create customer table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS customers (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        first_name TEXT,
+        last_name TEXT,
+        company TEXT,
+        address TEXT,
+        city TEXT,
+        state TEXT,
+        zip TEXT,
+        country TEXT,
+        phone TEXT,
+        mobile TEXT,
+        email TEXT,
         password TEXT,
         shipping_firstname TEXT,
         shipping_lastname TEXT,
@@ -77,10 +129,10 @@ export async function POST(req) {
 
     // Insert Query
     const insertQuery = `
-      INSERT INTO customer (
-        billing_firstname, billing_lastname, billing_company, billing_address, billing_city,
-        billing_state, billing_zip, billing_country, billing_phone, billing_mobile,
-        billing_email, password,
+      INSERT INTO customers (
+        first_name, last_name, company, address, city,
+        state,zip, country, phone, mobile,
+        email, password,
         shipping_firstname, shipping_lastname, shipping_company, shipping_address, shipping_city,
         shipping_state, shipping_zip, shipping_country, shipping_phone, shipping_mobile,
         sendinvoice, conformance, terms, freight, note
@@ -96,8 +148,8 @@ export async function POST(req) {
 
     // values
     const values = [
-      firstname,
-      lastname,
+      first_name,
+      last_name,
       company,
       address,
       city,
@@ -108,16 +160,16 @@ export async function POST(req) {
       mobile || null,
       email,
       hashedPassword,
-      sfirstname || null,
-      slastname || null,
-      scompany || null,
-      saddress || null,
-      scity || null,
-      sstate || null,
-      szip || null,
-      scountry || null,
-      sphone || null,
-      smobile || null,
+      shipping_firstname || null,
+      shipping_lastname || null,
+      shipping_company || null,
+      shipping_address || null,
+      shipping_city || null,
+      shipping_state || null,
+      shipping_zip || null,
+      shipping_country || null,
+      shipping_phone || null,
+      shipping_mobile || null,
       sendinvoice || null,
       conformance || null,
       terms || null,
@@ -149,7 +201,7 @@ export async function GET(req) {
   const offset = (page - 1) * limit;
 
   const search = searchParams.get("search") || "";
-  const sortBy = searchParams.get("sortBy") || 'sort_order';
+  const sortBy = searchParams.get("sortBy") || "sort_order";
   const sortOrder = searchParams.get("sortOrder") || "asc";
 
   // Validate allowed sort columns
@@ -160,9 +212,9 @@ export async function GET(req) {
     "email",
     "company",
     "created_at",
-    "sort_order"
+    "sort_order",
   ];
-  const orderBy = validSorts.includes(sortBy) ? sortBy : "sort_order"; 
+  const orderBy = validSorts.includes(sortBy) ? sortBy : "sort_order";
   const orderDirection = sortOrder === "desc" ? "DESC" : "ASC";
 
   try {
@@ -202,4 +254,3 @@ export async function GET(req) {
     return new Response("Internal Server Error", { status: 500 });
   }
 }
-
