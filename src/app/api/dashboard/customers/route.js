@@ -38,7 +38,7 @@ export async function POST(req) {
       note,
     } = data;
 
-        const trimmedEmail = email.trim().toLowerCase();
+    const trimmedEmail = email.trim().toLowerCase();
 
     // existingUser if user already exists
     const existingUser = await pool.query(
@@ -205,6 +205,9 @@ export async function GET(req) {
   const offset = (page - 1) * limit;
 
   const search = searchParams.get("search") || "";
+  // const sortBy = searchParams.get("sortBy") || "created_at";
+  // const sortOrder = searchParams.get("sortOrder") || "desc";
+
   const sortBy = searchParams.get("sortBy") || "sort_order";
   const sortOrder = searchParams.get("sortOrder") || "asc";
 
@@ -218,7 +221,10 @@ export async function GET(req) {
     "created_at",
     "sort_order",
   ];
-  const orderBy = validSorts.includes(sortBy) ? sortBy : "sort_order";
+
+  const orderBy = validSorts.includes(sortBy) ? sortBy : "created_at";
+
+  //  const orderBy = validSorts.includes(sortBy) ? sortBy : "sort_order";
   const orderDirection = sortOrder === "desc" ? "DESC" : "ASC";
 
   try {

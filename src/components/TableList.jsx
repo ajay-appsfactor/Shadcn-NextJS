@@ -129,7 +129,7 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
         if (!res.ok) throw new Error("Failed to fetch users");
 
         const data = await res.json();
-        console.log("API Response:", data); 
+        console.log("API Response:", data);
         setUsers(data.users || []);
         setTotalCount(data.totalCount || 0);
       } catch (err) {
@@ -169,12 +169,12 @@ function DraggableTableRow({ row }) {
     id: row.original.id,
   });
 
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.5 : 1,
-    };
-    
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   // const style = {
   //   ...(transform && { transform: CSS.Transform.toString(transform) }),
   //   transition,
@@ -363,7 +363,7 @@ export default function TableList() {
         id: "actions",
         header: "ACTIONS",
         enableSorting: false,
-        cell: ({row}) => (
+        cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -377,7 +377,9 @@ export default function TableList() {
             <DropdownMenuContent align="end" className="w-32">
               <DropdownMenuItem
                 onClick={() =>
-                  router.push(`/dashboard/customers/edit/${row.original.user_id}`)
+                  router.push(
+                    `/dashboard/customers/edit/${row.original.user_id}`
+                  )
                 }
                 aria-label={`Edit customer ${row.original.user_id}`}
               >
@@ -517,7 +519,6 @@ export default function TableList() {
     [users, setUsers]
   );
 
-
   // Export functions
   const handleExport = (type) => {
     alert(`Export to ${type} not implemented`);
@@ -615,7 +616,7 @@ export default function TableList() {
                       <TableHead
                         key={`header-${header.id}`}
                         onClick={header.column.getToggleSortingHandler()}
-                        // className="cursor-pointer px-4 py-2 text-left text-sm font-medium text-muted-foreground"
+                        className="cursor-pointer px-4 py-2 text-left text-sm font-medium text-muted-foreground"
                       >
                         <div className="flex items-center gap-1">
                           {flexRender(
@@ -748,6 +749,12 @@ export default function TableList() {
               </SelectContent>
             </Select>
           </div>
+          {/* Pager Per Count */}
+          <div className="flex w-fit items-center justify-center text-sm font-medium">
+            Page {table.getState().pagination.pageIndex + 1} of{" "}
+            {table.getPageCount()}
+          </div>
+
           {/* Pagination buttons */}
           <div className="ml-auto flex items-center gap-2 lg:ml-0">
             <Pagination>
@@ -814,6 +821,3 @@ export default function TableList() {
     </div>
   );
 }
-
-
-

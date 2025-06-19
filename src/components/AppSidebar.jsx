@@ -1,6 +1,14 @@
 "use client";
 
-import {Home, Users,User2, ChevronUp, UserRound, LogOut, Settings } from "lucide-react";
+import {
+  Home,
+  Users,
+  User,
+  ChevronUp,
+  UserRound,
+  LogOut,
+  Settings,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -130,19 +138,23 @@ const AppSidebar = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem className="flex items-center gap-2 hover:bg-muted cursor-pointer">
-                  <UserRound className="w-4 h-4" />
+                  <User className="w-4 h-4 mr-2" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex items-center gap-2 hover:bg-muted cursor-pointer">
+                  <UserRound className="w-4 h-4 mr-2" />
                   Account
                 </DropdownMenuItem>
                 <DropdownMenuItem className="flex items-center gap-2 hover:bg-muted cursor-pointer">
-                  <Settings className="w-4 h-4" />
+                  <Settings className="w-4 h-4 mr-2" />
                   Settings
                 </DropdownMenuItem>
                 <DropdownMenuItem className="p-0">
                   <Button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    
-                    className="w-full justify-start rounded-none text-sm bg-rose-400 cursor-pointer"
+                    variant="destructive"
+                    className="w-full justify-start rounded-none text-sm cursor-pointer"
                   >
                     <LogOut className="w-4 h-4 mr-2" />
                     {isLoggingOut ? "Logging out..." : "Logout"}
