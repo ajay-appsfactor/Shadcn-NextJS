@@ -1,0 +1,41 @@
+CREATE TABLE IF NOT EXISTS customers (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  first_name TEXT,
+  last_name TEXT,
+  email TEXT UNIQUE,
+  company TEXT,
+  address TEXT,
+  city TEXT,
+  state TEXT,
+  zip TEXT,
+  country TEXT,
+  phone TEXT,
+  mobile TEXT,
+  
+  shipping_firstname TEXT,
+  shipping_lastname TEXT,
+  shipping_company TEXT,
+  shipping_address TEXT,
+  shipping_city TEXT,
+  shipping_state TEXT,
+  shipping_zip TEXT,
+  shipping_country TEXT,
+  shipping_phone TEXT,
+  shipping_mobile TEXT,
+
+  sendinvoice TEXT,
+  conformance TEXT,
+  terms TEXT,
+  freight TEXT,
+  note TEXT,
+  about TEXT,
+  sort_order INTEGER DEFAULT 0,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+sort_order INTEGER DEFAULT 0,
+UPDATE customers SET sort_order = id;

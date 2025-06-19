@@ -2,7 +2,7 @@ import pool from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 
-// POST: Add Customer
+
 export async function POST(req) {
   try {
     const data = await req.json();
@@ -34,20 +34,20 @@ export async function POST(req) {
       conformance,
       terms,
       freight,
-      note,
+      note
     } = data;
 
-    // Hash password
+    // Hash the password (if provided)
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
-    // User Table
+    // Create users table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(100) UNIQUE NOT NULL,
         password VARCHAR(100) NOT NULL,
         first_name VARCHAR(100) NOT NULL,
-        last_name VARCHAR(100),
+        last_name VARCHAR(100) NOT NULL,
         company VARCHAR(100),
         address TEXT,
         city VARCHAR(100),
@@ -55,16 +55,19 @@ export async function POST(req) {
         country VARCHAR(100),
         zip VARCHAR(20),
         phone VARCHAR(20),
-        about TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
     // Insert user
-    const userData = await pool.query(
-      `INSERT INTO users
-        (email, password, first_name, last_name, company, address, city, state, country, zip, phone, about)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+    const userResult = await pool.query(
+      `INSERT INTO users (
+        email, password, first_name, last_name, company,
+        address, city, state, country, zip, phone
+      ) VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10, $11
+      ) RETURNING id`,
       [
         email,
         hashedPassword,
@@ -77,13 +80,10 @@ export async function POST(req) {
         country,
         zip,
         phone,
-        about,
       ]
     );
 
-    const user = userData.rows[0];
-    console.log("customer user:", userData);
-
+    const user = userResult.rows[0];
     if (!user) {
       return NextResponse.json(
         { error: "User could not be created" },
@@ -91,11 +91,11 @@ export async function POST(req) {
       );
     }
 
-    // Create customer table
+    // Create customers table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS customers (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
+        user_id INTEGER REFERENCES users(id) NOT NULL,
         first_name TEXT,
         last_name TEXT,
         company TEXT,
@@ -107,7 +107,6 @@ export async function POST(req) {
         phone TEXT,
         mobile TEXT,
         email TEXT,
-        password TEXT,
         shipping_firstname TEXT,
         shipping_lastname TEXT,
         shipping_company TEXT,
@@ -127,27 +126,29 @@ export async function POST(req) {
       );
     `);
 
-    // Insert Query
-    const insertQuery = `
+    // Insert customer
+    const insertCustomerQuery = `
       INSERT INTO customers (
+        user_id,
         first_name, last_name, company, address, city,
-        state,zip, country, phone, mobile,
-        email, password,
-        shipping_firstname, shipping_lastname, shipping_company, shipping_address, shipping_city,
-        shipping_state, shipping_zip, shipping_country, shipping_phone, shipping_mobile,
+        state, zip, country, phone, mobile, email,
+        shipping_firstname, shipping_lastname, shipping_company,
+        shipping_address, shipping_city, shipping_state,
+        shipping_zip, shipping_country, shipping_phone, shipping_mobile,
         sendinvoice, conformance, terms, freight, note
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
         $11, $12,
-        $13, $14, $15, $16, $17,
-        $18, $19, $20, $21, $22,
+        $13, $14, $15,
+        $16, $17, $18,
+        $19, $20, $21, $22,
         $23, $24, $25, $26, $27
       ) RETURNING id
     `;
 
-    // values
-    const values = [
+    const customerValues = [
+      user.id,
       first_name,
       last_name,
       company,
@@ -159,7 +160,6 @@ export async function POST(req) {
       phone || null,
       mobile || null,
       email,
-      hashedPassword,
       shipping_firstname || null,
       shipping_lastname || null,
       shipping_company || null,
@@ -177,22 +177,220 @@ export async function POST(req) {
       note || null,
     ];
 
-    const result = await pool.query(insertQuery, values);
+    const customerResult = await pool.query(insertCustomerQuery, customerValues);
 
     return NextResponse.json(
-      { message: "Customer added", customerId: result.rows[0].id },
+      {
+        message: "Customer added successfully",
+        customerId: customerResult.rows[0].id,
+      },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error in add customer:", error.message);
+    console.error("Error in POST /api/dashboard/customers:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }
 }
 
+
+// export async function POST(req) {
+
+//   try {
+//     const data = await req.json();
+
+//     const {
+//       first_name,
+//       last_name,
+//       company,
+//       address,
+//       city,
+//       state,
+//       zip,
+//       country,
+//       phone,
+//       mobile,
+//       email,
+//       password,
+//       shipping_firstname,
+//       shipping_lastname,
+//       shipping_company,
+//       shipping_address,
+//       shipping_city,
+//       shipping_state,
+//       shipping_country,
+//       shipping_zip,
+//       shipping_phone,
+//       shipping_mobile,
+//       sendinvoice,
+//       conformance,
+//       terms,
+//       freight,
+//       note,
+//     } = data;
+
+//     // Hash password
+//     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+
+//     // User Table
+//     await pool.query(`
+//       CREATE TABLE IF NOT EXISTS users (
+//         id SERIAL PRIMARY KEY,
+//         email VARCHAR(100) UNIQUE NOT NULL,
+//         password VARCHAR(100) NOT NULL,
+//         first_name VARCHAR(100) NOT NULL,
+//         last_name VARCHAR(100),
+//         company VARCHAR(100),
+//         address TEXT,
+//         city VARCHAR(100),
+//         state VARCHAR(100),
+//         country VARCHAR(100),
+//         zip VARCHAR(20),
+//         phone VARCHAR(20),
+//         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+//       );
+//     `);
+
+//     // Insert user
+//     const userData = await pool.query(
+//       `INSERT INTO users
+//         (email, password, first_name, last_name, company, address, city, state, country, zip, phone)
+//        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+//       [
+//         email,
+//         hashedPassword,
+//         first_name,
+//         last_name,
+//         company,
+//         address,
+//         city,
+//         state,
+//         country,
+//         zip,
+//         phone,
+//       ]
+//     );
+
+//     const user = userData.rows[0];
+//     console.log("customer user:", userData);
+
+//     if (!user) {
+//       return NextResponse.json(
+//         { error: "User could not be created" },
+//         { status: 500 }
+//       );
+//     }
+
+//     // Create customer table
+//     await pool.query(`
+//       CREATE TABLE IF NOT EXISTS customers (
+//         id SERIAL PRIMARY KEY,
+//         user_id INTEGER REFERENCES users(id) NOT NULL,
+//         first_name TEXT,
+//         last_name TEXT,
+//         company TEXT,
+//         address TEXT,
+//         city TEXT,
+//         state TEXT,
+//         zip TEXT,
+//         country TEXT,
+//         phone TEXT,
+//         mobile TEXT,
+//         email TEXT,
+//         password TEXT,
+//         shipping_firstname TEXT,
+//         shipping_lastname TEXT,
+//         shipping_company TEXT,
+//         shipping_address TEXT,
+//         shipping_city TEXT,
+//         shipping_state TEXT,
+//         shipping_zip TEXT,
+//         shipping_country TEXT,
+//         shipping_phone TEXT,
+//         shipping_mobile TEXT,
+//         sendinvoice TEXT,
+//         conformance TEXT,
+//         terms TEXT,
+//         freight TEXT,
+//         note TEXT,
+//         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+//       );
+//     `);
+
+//     // Insert Query
+//     const insertQuery = `
+//       INSERT INTO customers (
+//         user_id,
+//         first_name, last_name, company, address, city,
+//         state,zip, country, phone, mobile,
+//         email, password,
+//         shipping_firstname, shipping_lastname, shipping_company, shipping_address, shipping_city,
+//         shipping_state, shipping_zip, shipping_country, shipping_phone, shipping_mobile,
+//         sendinvoice, conformance, terms, freight, note
+//       ) VALUES (
+//         $1, $2, $3, $4, $5,
+//         $6, $7, $8, $9, $10,
+//         $11, $12,
+//         $13, $14, $15, $16, $17,
+//         $18, $19, $20, $21, $22,
+//         $23, $24, $25, $26, $27
+//       ) RETURNING id
+//     `;
+
+//     // values
+//     const values = [
+//       user.id,
+//       first_name,
+//       last_name,
+//       company,
+//       address,
+//       city,
+//       state,
+//       zip,
+//       country,
+//       phone || null,
+//       mobile || null,
+//       email,
+//       hashedPassword,
+//       shipping_firstname || null,
+//       shipping_lastname || null,
+//       shipping_company || null,
+//       shipping_address || null,
+//       shipping_city || null,
+//       shipping_state || null,
+//       shipping_zip || null,
+//       shipping_country || null,
+//       shipping_phone || null,
+//       shipping_mobile || null,
+//       sendinvoice || null,
+//       conformance || null,
+//       terms || null,
+//       freight || null,
+//       note || null,
+//     ];
+
+//     const result = await pool.query(insertQuery, values);
+//     console.log(result.rows[0]);
+
+//     return NextResponse.json(
+//       { message: "Customer added", customerId: result.rows[0].id },
+//       { status: 201 }
+//     );
+//   } catch (error) {
+//     console.error("Error in add customer:", error.message);
+//     return NextResponse.json(
+//       { error: "Internal server error" },
+//       { status: 500 }
+//     );
+//   }
+// }
+
 // Pagination & Search
+
+
+
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
 
@@ -254,3 +452,4 @@ export async function GET(req) {
     return new Response("Internal Server Error", { status: 500 });
   }
 }
+
