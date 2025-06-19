@@ -377,9 +377,9 @@ export default function TableList() {
             <DropdownMenuContent align="end" className="w-32">
               <DropdownMenuItem
                 onClick={() =>
-                  router.push(`/dashboard/customers/edit/${row.original.id}`)
+                  router.push(`/dashboard/customers/edit/${row.original.user_id}`)
                 }
-                aria-label={`Edit customer ${row.original.id}`}
+                aria-label={`Edit customer ${row.original.user_id}`}
               >
                 Edit
               </DropdownMenuItem>

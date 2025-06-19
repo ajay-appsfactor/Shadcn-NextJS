@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import { useRouter } from "next/navigation";
-import addCustomerSchema from "@/validation/addCustomerSchema";
+import updateCustomerSchema from "@/validation/updateCustomerSchema";
 import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -35,8 +35,10 @@ export default function EditCustomerPage() {
     "SALES",
   ];
 
-  // Fetch customer data
+  // Fetch single customer data
   useEffect(() => {
+    setLoading(true);
+
     const fetchCustomer = async () => {
       try {
         const response = await fetch(`/api/dashboard/customers/${id}`);
@@ -46,14 +48,14 @@ export default function EditCustomerPage() {
         const data = await response.json();
         console.log(data);
 
-        const sanitizedData = Object.fromEntries(
+        const sanitized = Object.fromEntries(
           Object.entries(data).map(([key, value]) => [key, value ?? ""])
         );
 
-        formik.setValues(sanitizedData);
+        formik.setValues(sanitized);
       } catch (error) {
-        toast.error("Failed to load customer data");
         console.error(error);
+        toast.error("Failed to load customer data");
       } finally {
         setLoading(false);
       }
@@ -94,7 +96,7 @@ export default function EditCustomerPage() {
       freight: "",
       note: "",
     },
-    validationSchema: addCustomerSchema,
+    validationSchema: updateCustomerSchema,
     onSubmit: async (values, { resetForm }) => {
       console.log(values);
       try {
@@ -105,18 +107,17 @@ export default function EditCustomerPage() {
           },
           body: JSON.stringify(values),
         });
-
+        const data = await res.json();
         if (!res.ok) {
-          const errorData = await res.json();
-          toast.error(errorData.message || "Add Customer failed!");
-          return;
+          toast.error(data.error || "Failed to update customer");
+        } else {
+          toast.success("Customer updated successfully");
+          router.push("/dashboard/customers");
+          resetForm();
         }
-        toast.success("Add Customer Successful!");
-        resetForm();
-        router.push("/dashboard/customers");
       } catch (err) {
-        toast.error("Add Customer failed!");
-        console.error(err);
+        console.error("Update error:", err);
+        toast.error("Error updating customer");
       }
     },
   });
@@ -132,6 +133,8 @@ export default function EditCustomerPage() {
     formik.errors[field] && (
       <p className="text-red-600 text-sm mt-1">{formik.errors[field]}</p>
     );
+
+  if (loading) return <p>Loading...</p>;
 
   return (
     <div className="p-4">
@@ -328,15 +331,15 @@ export default function EditCustomerPage() {
 
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium">
-                  Phone
+                  Phone <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="phone"
-                  value={formik.values.phone}
-                  onChange={formik.handleChange}
+                  {...inputProps("phone")}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
+                 {renderError("phone")}
               </div>
 
               <div>
