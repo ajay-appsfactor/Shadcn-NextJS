@@ -145,7 +145,7 @@ const AddCustomerPage = () => {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium">
-              Password
+              Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -160,6 +160,7 @@ const AddCustomerPage = () => {
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </span>
+              {renderError("password")}
             </div>
           </div>
         </div>
@@ -294,15 +295,15 @@ const AddCustomerPage = () => {
 
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium">
-                  Phone
+                  Phone <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="phone"
-                  value={formik.values.phone}
-                  onChange={formik.handleChange}
+                  {...inputProps("phone")}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
+                 {renderError("phone")}
               </div>
 
               <div>

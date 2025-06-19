@@ -129,6 +129,7 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
         if (!res.ok) throw new Error("Failed to fetch users");
 
         const data = await res.json();
+        console.log("API Response:", data); 
         setUsers(data.users || []);
         setTotalCount(data.totalCount || 0);
       } catch (err) {
