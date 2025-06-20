@@ -37,5 +37,20 @@ CREATE TABLE IF NOT EXISTS customers (
 );
 
 
+ALTER TABLE users ADD COLUMN sort_order INTEGER DEFAULT 0;
+
 sort_order INTEGER DEFAULT 0,
 UPDATE customers SET sort_order = id;
+
+SELECT * FROM customers
+WHERE user_id = $1
+ORDER BY sort_order ASC;
+
+const { rows: existingCustomers } = await pool.query(
+  'SELECT MAX(sort_order) FROM customers WHERE user_id = $1',
+  [user.id]
+);
+const maxOrder = existingCustomers[0].max ?? -1;
+const newOrder = maxOrder + 1;
+
+

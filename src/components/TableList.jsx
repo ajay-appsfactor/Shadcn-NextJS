@@ -103,12 +103,12 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
       abortControllerRef.current = controller;
 
       try {
-        const sortBy = sorting.length
-          ? sorting.map((s) => s.id).join(",")
-          : "sort_order";
+        const sortBy = sorting.length ? sorting[0].id : "sort_order";
         const sortOrder = sorting.length
-          ? sorting.map((s) => (s.desc ? "desc" : "asc")).join(",")
-          : "asc";
+          ? sorting[0].desc
+            ? "desc"
+            : "asc"
+          : "asc"; 
 
         const params = new URLSearchParams({
           page: String(pageIndex + 1),
@@ -174,15 +174,6 @@ function DraggableTableRow({ row }) {
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
-
-  // const style = {
-  //   ...(transform && { transform: CSS.Transform.toString(transform) }),
-  //   transition,
-  //   opacity: isDragging ? 0.8 : 1,
-  //   zIndex: isDragging ? 1 : 0,
-  //   position: "relative",
-  //   backgroundColor: isDragging ? "var(--background)" : undefined,
-  // };
 
   return (
     <TableRow
@@ -385,8 +376,6 @@ export default function TableList() {
               >
                 Edit
               </DropdownMenuItem>
-              {/* <DropdownMenuItem>Make a copy</DropdownMenuItem>
-              <DropdownMenuItem>Favorite</DropdownMenuItem> */}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-red-500">
                 Delete
@@ -479,40 +468,50 @@ export default function TableList() {
     setActiveRow(event.active.id);
   }, []);
 
-  // Update handleDragEnd function
+  // Handle Drag End - Update sort_order in backend
   const handleDragEnd = useCallback(
     async (event) => {
       const { active, over } = event;
       setActiveRow(null);
 
       if (active && over && active.id !== over.id) {
-        const oldIndex = users.findIndex((user) => user.id === active.id);
-        const newIndex = users.findIndex((user) => user.id === over.id);
+        const oldIndex = users.findIndex((u) => u.id === active.id);
+        const newIndex = users.findIndex((u) => u.id === over.id);
 
-        if (oldIndex !== -1 && newIndex !== -1) {
-          // Optimistic update
-          const newUsers = arrayMove(users, oldIndex, newIndex);
-          setUsers(newUsers);
+        if (oldIndex === -1 || newIndex === -1) return;
 
-          try {
-            // Send only the moved item's new position
-            const response = await fetch("/api/dashboard/customers/reorder", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                id: active.id,
-                newOrder: newIndex,
-              }),
-            });
+        // Create new array with updated positions
+        const newUsers = arrayMove(users, oldIndex, newIndex);
+        
+        // Update sort_order for all affected rows
+        const updatedUsers = newUsers.map((user, index) => ({
+          ...user,
+          sort_order: index,
+        }));
 
-            if (!response.ok) {
-              throw new Error("Failed to update order");
-            }
-          } catch (error) {
-            console.error("Reorder error:", error);
-            // Revert if API call fails
-            setUsers([...users]);
-          }
+        setUsers(updatedUsers);
+
+        try {
+          // Send all rows to backend to update their sort_order
+          const res = await fetch("/api/dashboard/customers/reorder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              updatedRows: updatedUsers.map((user) => ({
+                id: user.id,
+                sort_order: user.sort_order,
+              })),
+            }),
+          });
+
+          if (!res.ok) throw new Error("Failed to reorder");
+          
+          const result = await res.json();
+          console.log("Reorder successful:", result);
+        } catch (err) {
+          console.error("Reorder error:", err);
+          // Revert to original order if update fails
+          setUsers([...users]);
         }
       }
     },
@@ -534,7 +533,13 @@ export default function TableList() {
           placeholder="Search customers..."
           className="w-full md:w-1/3 rounded-md border border-gray-300 px-4 py-2 text-sm"
           value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            setGlobalFilter(value);
+            setPageIndex(0);
+            updateUrlParams("search", value);
+            updateUrlParams("page", "1");
+          }}
           style={{ cursor: "text" }}
         />
 

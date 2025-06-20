@@ -1,5 +1,3 @@
-// npm install @tanstack/react-table
-// npm install papaparse xlsx
 
 "use client";
 

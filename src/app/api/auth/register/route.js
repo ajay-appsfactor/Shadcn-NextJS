@@ -109,8 +109,8 @@ export async function POST(request) {
     `);
 
     // Insert Into Customer Table
-  const customer = await pool.query(
-  `INSERT INTO customers (
+    const customer = await pool.query(
+      `INSERT INTO customers (
     user_id,
     first_name, last_name, email, company, address, city,
     state, zip, country, phone, mobile,
@@ -124,29 +124,41 @@ export async function POST(request) {
     $19, $20, $21, $22, $23,
     $24, $25, $26, $27, $28, $29
   ) RETURNING *`,
-  [
-    user.id,
-    firstname,
-    lastname,
-    trimmedEmail,
-    company,
-    address,
-    city,
-    state,
-    zip,
-    country,
-    phone,
-    null, 
-    null, null, null, null, null,
-    null, null, null, null, null,
-    null, null, null, null, null,
-    about || null,
-    user.id, 
-  ]
-);
+      [
+        user.id,
+        firstname,
+        lastname,
+        trimmedEmail,
+        company,
+        address,
+        city,
+        state,
+        zip,
+        country,
+        phone,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        about || null,
+        0,
+      ]
+    );
 
-const CustomerData = customer.rows[0];
-console.log("Customer data:", CustomerData); 
+    const CustomerData = customer.rows[0];
+    console.log("Customer data:", CustomerData);
 
     // create a jwt token
     const token = createToken({ id: user.id, email: user.email });
@@ -172,4 +184,3 @@ console.log("Customer data:", CustomerData);
     );
   }
 }
-

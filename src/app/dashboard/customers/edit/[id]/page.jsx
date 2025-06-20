@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useFormik } from "formik";
@@ -142,8 +142,9 @@ export default function EditCustomerPage() {
         <h2 className="text-lg font-bold">Edit Customer - ID : {id}</h2>
         <Link
           href="/dashboard/customers"
-          className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition"
+          className="inline-flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-sm font-medium text-white py-2 px-4 rounded-lg transition"
         >
+          <ArrowLeft className="w-4 h-4" />
           Back
         </Link>
       </div>
@@ -339,7 +340,7 @@ export default function EditCustomerPage() {
                   {...inputProps("phone")}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
-                 {renderError("phone")}
+                {renderError("phone")}
               </div>
 
               <div>

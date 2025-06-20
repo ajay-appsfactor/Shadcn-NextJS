@@ -5,6 +5,7 @@ export const metadata = {
 
 // import CustomerList from "@/components/CustomerList";
 import TableList from "@/components/TableList";
+import { CirclePlus } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
@@ -15,8 +16,9 @@ const GetCustomers = () => {
         <h5 className="text-xl font-bold">Customers</h5>
         <Link
           href="/dashboard/customers/create"
-          className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition"
+          className="inline-flex items-center gap-2 bg-gray-600 hover:bg-gray-700 font-medium text-white text-sm py-2 px-4 rounded-lg transition"
         >
+          <CirclePlus className="w-4 h-4" />
           Add New Customer
         </Link>
       </div>
