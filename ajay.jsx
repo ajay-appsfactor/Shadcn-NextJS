@@ -1,7 +1,5 @@
 "use client";
 
-import "react-tabs/style/react-tabs.css";
-import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import { Label } from "@/components/ui/label";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -91,12 +89,32 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const abortControllerRef = useRef(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const updateUrlParams = useCallback(
+    (key, value) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (
+        value === undefined ||
+        value === null ||
+        value === "" ||
+        value === false
+      ) {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+      router.replace(`${pathname}?${params.toString()}`);
+    },
+    [searchParams, router, pathname]
+  );
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
 
-      // Cancel any previous request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -131,12 +149,24 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
         if (!res.ok) throw new Error("Failed to fetch users");
 
         const data = await res.json();
-        console.log("API Response:", data);
-        setUsers(data.users || []);
-        setTotalCount(data.totalCount || 0);
+
+        if (data.users?.length > 0) {
+          setUsers(data.users);
+          setTotalCount(data.totalCount || 0);
+        } else if (pageIndex > 0) {
+          // If no results on current page, reset to page 1
+          setPageIndex(0);
+          updateUrlParams("page", "1");
+          return; // Exit to prevent setting empty state
+        } else {
+          setUsers([]);
+          setTotalCount(0);
+        }
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error("Fetch error:", err);
+          setUsers([]);
+          setTotalCount(0);
         }
       } finally {
         setLoading(false);
@@ -145,16 +175,10 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
 
     fetchData();
 
-    // Cleanup on unmount or dependency change
     return () => {
       abortControllerRef.current?.abort();
     };
-  }, [
-    pageIndex,
-    pageSize,
-    debouncedSearch,
-    sorting.map((s) => `${s.id}:${s.desc ? "desc" : "asc"}`).join("|"),
-  ]);
+  }, [pageIndex, pageSize, debouncedSearch, sorting, updateUrlParams]);
 
   return { users, totalCount, loading, setUsers };
 }
@@ -232,29 +256,6 @@ export default function TableList() {
     sorting,
   });
 
-  // Handle Delete
-  const handleDeleteCustomer = async (userId, router) => {
-    const confirmed = confirm("Are you sure you want to delete this customer?");
-    if (!confirmed) return;
-
-    try {
-      const res = await fetch(`/api/dashboard/customers/${userId}`, {
-        method: "DELETE",
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to delete");
-      }
-
-      toast.success("Customer deleted successfully");
-       setUsers((prev) => prev.filter((user) => user.user_id !== userId));
-    } catch (err) {
-      toast.error(err.message || "Failed to delete customer");
-    }
-  };
-
   // Column order state
   const [columnOrder, setColumnOrder] = useState(() => [
     "drag",
@@ -302,6 +303,12 @@ export default function TableList() {
     },
     [searchParams, router, pathname]
   );
+
+  // Handle search change
+  const handleSearchChange = (value) => {
+    setGlobalFilter(value);
+    updateUrlParams("search", value);
+  };
 
   // Columns definition
   const columns = useMemo(
@@ -402,13 +409,7 @@ export default function TableList() {
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-500"
-                onClick={() =>
-                   handleDeleteCustomer(row.original.user_id, router, setUsers)
-                }
-                aria-label={`Delete customer ${row.original.user_id}`}
-              >
+              <DropdownMenuItem className="text-red-500">
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -444,10 +445,7 @@ export default function TableList() {
     },
     onSortingChange: setSorting,
     onGlobalFilterChange: (value) => {
-      setGlobalFilter(value);
-      setPageIndex(0);
-      updateUrlParams("search", value);
-      updateUrlParams("page", "1");
+      handleSearchChange(value);
     },
     onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
@@ -564,13 +562,7 @@ export default function TableList() {
           placeholder="Search customers..."
           className="w-full md:w-1/3 rounded-md border border-gray-300 px-4 py-2 text-sm"
           value={globalFilter}
-          onChange={(e) => {
-            const value = e.target.value;
-            setGlobalFilter(value);
-            setPageIndex(0);
-            updateUrlParams("search", value);
-            updateUrlParams("page", "1");
-          }}
+          onChange={(e) => handleSearchChange(e.target.value)}
           style={{ cursor: "text" }}
         />
 

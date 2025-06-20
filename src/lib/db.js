@@ -1,11 +1,20 @@
 import { Pool } from 'pg';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  // ssl: {
-  //   rejectUnauthorized: false,
-  // },
+  user: 'postgres',
+  host: 'localhost',
+  database: 'my_next_app',
+  password: 'ajay@321',
+  port: 5432,
 });
+
+
+// const pool = new Pool({
+//   connectionString: process.env.DATABASE_URL,
+//   // ssl: {
+//   //   rejectUnauthorized: false,
+//   // },
+// });
 
 pool.connect()
   .then(() => {

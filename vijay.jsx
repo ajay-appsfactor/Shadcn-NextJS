@@ -1,7 +1,5 @@
 "use client";
 
-import "react-tabs/style/react-tabs.css";
-import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import { Label } from "@/components/ui/label";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -232,29 +230,6 @@ export default function TableList() {
     sorting,
   });
 
-  // Handle Delete
-  const handleDeleteCustomer = async (userId, router) => {
-    const confirmed = confirm("Are you sure you want to delete this customer?");
-    if (!confirmed) return;
-
-    try {
-      const res = await fetch(`/api/dashboard/customers/${userId}`, {
-        method: "DELETE",
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to delete");
-      }
-
-      toast.success("Customer deleted successfully");
-       setUsers((prev) => prev.filter((user) => user.user_id !== userId));
-    } catch (err) {
-      toast.error(err.message || "Failed to delete customer");
-    }
-  };
-
   // Column order state
   const [columnOrder, setColumnOrder] = useState(() => [
     "drag",
@@ -402,13 +377,7 @@ export default function TableList() {
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-500"
-                onClick={() =>
-                   handleDeleteCustomer(row.original.user_id, router, setUsers)
-                }
-                aria-label={`Delete customer ${row.original.user_id}`}
-              >
+              <DropdownMenuItem className="text-red-500">
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>

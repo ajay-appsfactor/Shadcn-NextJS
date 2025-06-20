@@ -31,7 +31,7 @@ export async function GET(request, { params }) {
 
 // Put Single Customer
 export async function PUT(req, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const data = await req.json();
 
   const {
@@ -199,20 +199,23 @@ export async function PUT(req, { params }) {
 // Delete Single Customer
 export async function DELETE(req, { params }) {
   const { id } = await params;
+   console.log("Delete customer id : ", id);
 
   try {
-    // check if user exists
-    const userResult = await pool.query(`SELECT * FROM users WHERE id = $1`, [id]);
+    const customerRes = await pool.query(
+      "SELECT * FROM customers WHERE user_id = $1",
+      [id]
+    );
 
-    if (userResult.rows.length === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (customerRes.rows.length === 0) {
+      return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
 
-    // Delete user 
-    await pool.query(`DELETE FROM users WHERE id = $1`, [id]);
+    await pool.query("DELETE FROM customers WHERE user_id = $1", [id]);
+    await pool.query("DELETE FROM users WHERE id = $1", [id]);
 
     return NextResponse.json(
-      { message: "Customer and associated user deleted successfully" },
+      { message: "Customer deleted successfully" },
       { status: 200 }
     );
   } catch (error) {
@@ -220,4 +223,5 @@ export async function DELETE(req, { params }) {
     return NextResponse.json({ error: "Failed to delete customer" }, { status: 500 });
   }
 }
+
 
