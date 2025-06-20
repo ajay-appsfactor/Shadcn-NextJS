@@ -1,0 +1,36 @@
+ALTER TABLE customers ADD CONSTRAINT unique_sort_order UNIQUE(sort_order);
+SELECT * FROM customers ORDER BY sort_order ASC LIMIT $1 OFFSET $2;
+
+ALTER TABLE customers ADD CONSTRAINT unique_sort_order UNIQUE(sort_order);
+
+
+WITH ordered AS (
+  SELECT id, ROW_NUMBER() OVER (ORDER BY sort_order ASC) - 1 AS new_sort_order
+  FROM customers
+)
+UPDATE customers
+SET sort_order = ordered.new_sort_order
+FROM ordered
+WHERE customers.id = ordered.id;
+
+INSERT INTO customers (name, email, ..., sort_order)
+VALUES ('John Doe', 'john@example.com', ..., (
+  SELECT COALESCE(MAX(sort_order), -1) + 1 FROM customers
+));
+
+const client = await pool.connect();
+const result = await client.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM customers');
+const nextSortOrder = result.rows[0].next_order;
+
+await client.query(
+  'INSERT INTO customers (name, email, ..., sort_order) VALUES ($1, $2, ..., $n)',
+  [name, email, ..., nextSortOrder]
+);
+
+CREATE TABLE customers (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  sort_order INTEGER NOT NULL UNIQUE
+);

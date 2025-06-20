@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { faker } from "@faker-js/faker";
 
 // CONFIGURATION
-const TOTAL_USERS = 2000;
+const TOTAL_USERS = 10000;
 const BATCH_SIZE = 1000;
 
 // Generate batch of fake users and customers
