@@ -54,3 +54,11 @@ const maxOrder = existingCustomers[0].max ?? -1;
 const newOrder = maxOrder + 1;
 
 
+ALTER TABLE customer ADD COLUMN gender VARCHAR(10);
+
+ALTER TABLE customer ALTER COLUMN gender SET DEFAULT 'UNKNOWN';
+
+ALTER TABLE customer
+ADD CONSTRAINT gender_check
+CHECK (gender IN ('MALE', 'FEMALE', 'OTHER', 'UNKNOWN'));
+

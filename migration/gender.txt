@@ -1,0 +1,13 @@
+-- 1. Add gender column with default
+ALTER TABLE customer
+ADD COLUMN gender VARCHAR(10) DEFAULT 'UNKNOWN';
+
+-- 2. Fill existing rows with 'UNKNOWN' if any NULLs appear (safe fallback)
+UPDATE customer
+SET gender = 'UNKNOWN'
+WHERE gender IS NULL;
+
+-- 3. Add CHECK constraint to allow only valid values
+ALTER TABLE customer
+ADD CONSTRAINT gender_check
+CHECK (gender IN ('MALE', 'FEMALE', 'OTHER', 'UNKNOWN'));

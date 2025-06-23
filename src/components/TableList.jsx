@@ -3,10 +3,12 @@
 import "react-tabs/style/react-tabs.css";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useDebounce } from "use-debounce";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ChevronDown,
   Ellipsis,
@@ -106,11 +108,7 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
 
       try {
         const sortBy = sorting.length ? sorting[0].id : "sort_order";
-        const sortOrder = sorting.length
-          ? sorting[0].desc
-            ? "desc"
-            : "asc"
-          : "asc";
+        const sortOrder = sorting.length && sorting[0].desc ? "desc" : "asc";
 
         const params = new URLSearchParams({
           page: String(pageIndex + 1),
@@ -249,7 +247,7 @@ export default function TableList() {
       }
 
       toast.success("Customer deleted successfully");
-       setUsers((prev) => prev.filter((user) => user.user_id !== userId));
+      setUsers((prev) => prev.filter((user) => user.user_id !== userId));
     } catch (err) {
       toast.error(err.message || "Failed to delete customer");
     }
@@ -264,6 +262,7 @@ export default function TableList() {
     "last_name",
     "company",
     "email",
+    "gender",
     "created_at",
     "actions",
   ]);
@@ -371,6 +370,74 @@ export default function TableList() {
         header: "EMAIL",
       },
       {
+        id: "gender",
+        accessorKey: "gender",
+        header: "GENDER",
+        cell: ({ row }) => {
+          const userId = row.original.id;
+          const currentGender = row.getValue("gender") || "UNKNOWN";
+
+          const genderOptions = ["MALE", "FEMALE", "OTHER", "UNKNOWN"];
+
+          const handleGenderUpdate = async (gender) => {
+            if (gender === currentGender) return;
+
+            try {
+              const res = await fetch(
+                `/api/dashboard/customers/${userId}/gender`,
+                {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ gender }),
+                }
+              );
+
+              if (!res.ok) throw new Error("Update failed");
+
+              toast.success(`Gender updated to ${gender.toLowerCase()}`);
+
+              // Update setUsers
+              setUsers((prevUsers) =>
+                prevUsers.map((user) =>
+                  user.id === userId ? { ...user, gender } : user
+                )
+              );
+            } catch (err) {
+              toast.error("Failed to update gender. Please try again.");
+              console.error("Failed to update gender:", err);
+            }
+          };
+
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="capitalize text-sm">
+                  {currentGender.toLowerCase()}
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end">
+                {genderOptions.map((option) => (
+                  <DropdownMenuItem
+                    key={option}
+                    onClick={() => handleGenderUpdate(option)}
+                    className={cn(
+                      "capitalize",
+                      option === currentGender
+                        ? "font-semibold text-primary"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {option.toLowerCase()}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+
+      {
         id: "created_at",
         header: "REGISTERED ON",
         accessorFn: (row) => dayjs(row.created_at).format("MMM DD, YYYY"),
@@ -405,7 +472,7 @@ export default function TableList() {
               <DropdownMenuItem
                 className="text-red-500"
                 onClick={() =>
-                   handleDeleteCustomer(row.original.user_id, router, setUsers)
+                  handleDeleteCustomer(row.original.user_id, router, setUsers)
                 }
                 aria-label={`Delete customer ${row.original.user_id}`}
               >
@@ -574,7 +641,7 @@ export default function TableList() {
           style={{ cursor: "text" }}
         />
 
-        {/* Column toggle & export */}
+        {/* Customize Columns */}
         <div className="flex items-center gap-2">
           {/* Column toggle */}
           <DropdownMenu>
@@ -677,16 +744,16 @@ export default function TableList() {
                         key={`skeleton-cell-${i}-${column.id || j}`}
                         className="px-4 py-2"
                       >
-                        <div className="h-4 w-full bg-muted rounded-md" />
+                        <Skeleton className="h-4 w-full rounded-md" />
                       </TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : users.length === 0 ? (
-                <TableRow key="no-results-row">
+                <TableRow>
                   <TableCell
                     colSpan={columns.length}
-                    className="text-center py-4 text-muted-foreground"
+                    className="text-center py-6 text-muted-foreground text-sm"
                   >
                     No customers found.
                   </TableCell>
@@ -697,7 +764,7 @@ export default function TableList() {
                   strategy={verticalListSortingStrategy}
                 >
                   {table.getRowModel().rows.map((row) => (
-                    <DraggableTableRow key={`row-${row.id}`} row={row} />
+                    <DraggableTableRow key={row.id} row={row} />
                   ))}
                 </SortableContext>
               )}

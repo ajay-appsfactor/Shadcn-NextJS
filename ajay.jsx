@@ -1,10 +1,14 @@
 "use client";
 
+import "react-tabs/style/react-tabs.css";
+import { toast } from "react-toastify";
 import dayjs from "dayjs";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useDebounce } from "use-debounce";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ChevronDown,
   Ellipsis,
@@ -89,32 +93,12 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const abortControllerRef = useRef(null);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-
-  const updateUrlParams = useCallback(
-    (key, value) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (
-        value === undefined ||
-        value === null ||
-        value === "" ||
-        value === false
-      ) {
-        params.delete(key);
-      } else {
-        params.set(key, value);
-      }
-      router.replace(`${pathname}?${params.toString()}`);
-    },
-    [searchParams, router, pathname]
-  );
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
 
+      // Cancel any previous request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -124,11 +108,7 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
 
       try {
         const sortBy = sorting.length ? sorting[0].id : "sort_order";
-        const sortOrder = sorting.length
-          ? sorting[0].desc
-            ? "desc"
-            : "asc"
-          : "asc";
+        const sortOrder = sorting.length && sorting[0].desc ? "desc" : "asc";
 
         const params = new URLSearchParams({
           page: String(pageIndex + 1),
@@ -149,24 +129,12 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
         if (!res.ok) throw new Error("Failed to fetch users");
 
         const data = await res.json();
-
-        if (data.users?.length > 0) {
-          setUsers(data.users);
-          setTotalCount(data.totalCount || 0);
-        } else if (pageIndex > 0) {
-          // If no results on current page, reset to page 1
-          setPageIndex(0);
-          updateUrlParams("page", "1");
-          return; // Exit to prevent setting empty state
-        } else {
-          setUsers([]);
-          setTotalCount(0);
-        }
+        console.log("API Response:", data);
+        setUsers(data.users || []);
+        setTotalCount(data.totalCount || 0);
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error("Fetch error:", err);
-          setUsers([]);
-          setTotalCount(0);
         }
       } finally {
         setLoading(false);
@@ -175,10 +143,16 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
 
     fetchData();
 
+    // Cleanup on unmount or dependency change
     return () => {
       abortControllerRef.current?.abort();
     };
-  }, [pageIndex, pageSize, debouncedSearch, sorting, updateUrlParams]);
+  }, [
+    pageIndex,
+    pageSize,
+    debouncedSearch,
+    sorting.map((s) => `${s.id}:${s.desc ? "desc" : "asc"}`).join("|"),
+  ]);
 
   return { users, totalCount, loading, setUsers };
 }
@@ -256,6 +230,29 @@ export default function TableList() {
     sorting,
   });
 
+  // Handle Delete
+  const handleDeleteCustomer = async (userId, router) => {
+    const confirmed = confirm("Are you sure you want to delete this customer?");
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/dashboard/customers/${userId}`, {
+        method: "DELETE",
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Failed to delete");
+      }
+
+      toast.success("Customer deleted successfully");
+      setUsers((prev) => prev.filter((user) => user.user_id !== userId));
+    } catch (err) {
+      toast.error(err.message || "Failed to delete customer");
+    }
+  };
+
   // Column order state
   const [columnOrder, setColumnOrder] = useState(() => [
     "drag",
@@ -265,6 +262,7 @@ export default function TableList() {
     "last_name",
     "company",
     "email",
+    "gender",
     "created_at",
     "actions",
   ]);
@@ -303,12 +301,6 @@ export default function TableList() {
     },
     [searchParams, router, pathname]
   );
-
-  // Handle search change
-  const handleSearchChange = (value) => {
-    setGlobalFilter(value);
-    updateUrlParams("search", value);
-  };
 
   // Columns definition
   const columns = useMemo(
@@ -378,6 +370,85 @@ export default function TableList() {
         header: "EMAIL",
       },
       {
+        id: "gender",
+        accessorKey: "gender",
+        header: "GENDER",
+        cell: ({ row }) => {
+          const userId = row.original.id;
+          const currentGender = row.getValue("gender") || "UNKNOWN";
+
+          const genderOptions = ["MALE", "FEMALE", "OTHER", "UNKNOWN"];
+          const [loading, setLoading] = useState(false);
+
+          const handleGenderUpdate = async (gender) => {
+            if (gender === currentGender) return;
+            setLoading(true);
+
+            try {
+              const res = await fetch(
+                `/api/dashboard/customers/${userId}/gender`,
+                {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ gender }),
+                }
+              );
+
+              if (!res.ok) throw new Error("Update failed");
+
+              toast.success(`Gender updated to ${gender.toLowerCase()}`);
+
+              // Update setUsers
+              setUsers((prevUsers) =>
+                prevUsers.map((user) =>
+                  user.id === userId ? { ...user, gender } : user
+                )
+              );
+            } catch (err) {
+              toast.error("Failed to update gender. Please try again.");
+              console.error("Failed to update gender:", err);
+            } finally {
+              setLoading(false);
+            }
+          };
+
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="capitalize text-sm">
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-3 h-3 border-2 border-t-transparent border-primary rounded-full animate-spin" />
+                      Saving...
+                    </span>
+                  ) : (
+                    currentGender.toLowerCase()
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end">
+                {genderOptions.map((option) => (
+                  <DropdownMenuItem
+                    key={option}
+                    onClick={() => handleGenderUpdate(option)}
+                    className={cn(
+                      "capitalize",
+                      option === currentGender
+                        ? "font-semibold text-primary"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {option.toLowerCase()}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+
+      {
         id: "created_at",
         header: "REGISTERED ON",
         accessorFn: (row) => dayjs(row.created_at).format("MMM DD, YYYY"),
@@ -409,7 +480,13 @@ export default function TableList() {
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-500">
+              <DropdownMenuItem
+                className="text-red-500"
+                onClick={() =>
+                  handleDeleteCustomer(row.original.user_id, router, setUsers)
+                }
+                aria-label={`Delete customer ${row.original.user_id}`}
+              >
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -445,7 +522,10 @@ export default function TableList() {
     },
     onSortingChange: setSorting,
     onGlobalFilterChange: (value) => {
-      handleSearchChange(value);
+      setGlobalFilter(value);
+      setPageIndex(0);
+      updateUrlParams("search", value);
+      updateUrlParams("page", "1");
     },
     onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
@@ -562,7 +642,13 @@ export default function TableList() {
           placeholder="Search customers..."
           className="w-full md:w-1/3 rounded-md border border-gray-300 px-4 py-2 text-sm"
           value={globalFilter}
-          onChange={(e) => handleSearchChange(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            setGlobalFilter(value);
+            setPageIndex(0);
+            updateUrlParams("search", value);
+            updateUrlParams("page", "1");
+          }}
           style={{ cursor: "text" }}
         />
 
@@ -669,16 +755,16 @@ export default function TableList() {
                         key={`skeleton-cell-${i}-${column.id || j}`}
                         className="px-4 py-2"
                       >
-                        <div className="h-4 w-full bg-muted rounded-md" />
+                        <Skeleton className="h-4 w-full rounded-md" />
                       </TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : users.length === 0 ? (
-                <TableRow key="no-results-row">
+                <TableRow>
                   <TableCell
                     colSpan={columns.length}
-                    className="text-center py-4 text-muted-foreground"
+                    className="text-center py-6 text-muted-foreground text-sm"
                   >
                     No customers found.
                   </TableCell>
@@ -689,7 +775,7 @@ export default function TableList() {
                   strategy={verticalListSortingStrategy}
                 >
                   {table.getRowModel().rows.map((row) => (
-                    <DraggableTableRow key={`row-${row.id}`} row={row} />
+                    <DraggableTableRow key={row.id} row={row} />
                   ))}
                 </SortableContext>
               )}
@@ -850,3 +936,6 @@ export default function TableList() {
     </div>
   );
 }
+
+
+// Final Status Gender 
