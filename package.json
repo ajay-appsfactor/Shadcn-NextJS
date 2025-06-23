@@ -1,14 +1,14 @@
 {
   "name": "my-app",
   "version": "0.1.0",
-   "type": "module",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed":"node src/script/seed.js"
+    "seed": "node src/script/seed.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -42,6 +42,7 @@
     "react-dom": "^19.0.0",
     "react-tabs": "^6.1.0",
     "react-toastify": "^11.0.5",
+    "recharts": "^2.15.4",
     "tailwind-merge": "^3.3.1",
     "use-debounce": "^10.0.5",
     "yup": "^1.6.1"
