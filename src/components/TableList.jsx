@@ -3,9 +3,10 @@
 import "react-tabs/style/react-tabs.css";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
+import { EditCustomerModal } from "./EditCustomerModal";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useDebounce } from "use-debounce";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -86,29 +87,44 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // Fetch customers based on page, size, search, sorting
 function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
-  const [users, setUsers] = useState([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState({
+    users: [],
+    totalCount: 0,
+    loading: true,
+    error: null,
+  });
+
   const abortControllerRef = useRef(null);
+  const isMounted = useRef(false);
 
   useEffect(() => {
+    isMounted.current = true;
+
     const fetchData = async () => {
-      setLoading(true);
-
-      // Cancel any previous request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
       try {
-        const sortBy = sorting.length ? sorting[0].id : "sort_order";
-        const sortOrder = sorting.length && sorting[0].desc ? "desc" : "asc";
+        setState((prev) => ({ ...prev, loading: true, error: null }));
+
+        // Cancel previous request
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        const sortBy = sorting[0]?.id || "sort_order";
+        const sortOrder = sorting[0]?.desc ? "desc" : "asc";
 
         const params = new URLSearchParams({
           page: String(pageIndex + 1),
@@ -118,46 +134,56 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
           sortOrder,
         });
 
-        const res = await fetch(
-          `/api/dashboard/customers?${params.toString()}`,
-          {
-            signal: controller.signal,
-            cache: "no-store",
-          }
-        );
+        const res = await fetch(`/api/dashboard/customers?${params}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
 
         if (!res.ok) throw new Error("Failed to fetch users");
 
         const data = await res.json();
-        console.log("API Response:", data);
-        setUsers(data.users || []);
-        setTotalCount(data.totalCount || 0);
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          console.error("Fetch error:", err);
+
+        if (isMounted.current && !controller.signal.aborted) {
+          setState({
+            users: Array.isArray(data.users) ? data.users : [],
+            totalCount: data.totalCount || 0,
+            loading: false,
+            error: null,
+          });
         }
-      } finally {
-        setLoading(false);
+      } catch (err) {
+        if (err.name !== "AbortError" && isMounted.current) {
+          console.error("Fetch error:", err);
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: err.message,
+          }));
+        }
       }
     };
 
     fetchData();
 
-    // Cleanup on unmount or dependency change
     return () => {
+      isMounted.current = false;
       abortControllerRef.current?.abort();
     };
-  }, [
-    pageIndex,
-    pageSize,
-    debouncedSearch,
-    sorting.map((s) => `${s.id}:${s.desc ? "desc" : "asc"}`).join("|"),
-  ]);
+  }, [pageIndex, pageSize, debouncedSearch, JSON.stringify(sorting)]);
 
-  return { users, totalCount, loading, setUsers };
+  return {
+    ...state,
+    setUsers: (updater) => {
+      setState((prev) => ({
+        ...prev,
+        users: typeof updater === "function" ? updater(prev.users) : updater,
+      }));
+    },
+  };
 }
 
-function DraggableTableRow({ row }) {
+// Draggable Table Row
+const DraggableTableRow = memo(({ row }) => {
   const {
     attributes,
     listeners,
@@ -204,21 +230,33 @@ function DraggableTableRow({ row }) {
       ))}
     </TableRow>
   );
-}
+});
 
 export default function TableList() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  // Initialize state from URL params
-  const initialPageSize = Number(searchParams.get("pageSize")) || 5;
-  const initialPage = Number(searchParams.get("page")) || 1;
-  const initialSearch = searchParams.get("search") || "";
+  // Dailog
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editUserId, setEditUserId] = useState(null);
 
-  const [globalFilter, setGlobalFilter] = useState(initialSearch);
-  const [pageIndex, setPageIndex] = useState(initialPage - 1);
-  const [pageSize, setPageSize] = useState(initialPageSize);
+  // Handle Edit
+  const handleEditClick = (id) => {
+    setEditUserId(id);
+    setIsEditOpen(true);
+  };
+
+  // State initialization
+  const [globalFilter, setGlobalFilter] = useState(
+    searchParams.get("search") || ""
+  );
+  const [pageIndex, setPageIndex] = useState(
+    Number(searchParams.get("page")) - 1 || 0
+  );
+  const [pageSize, setPageSize] = useState(
+    Number(searchParams.get("pageSize")) || 5
+  );
   const [sorting, setSorting] = useState([]);
   const [activeRow, setActiveRow] = useState(null);
   const [debouncedSearch] = useDebounce(globalFilter, 500);
@@ -230,28 +268,87 @@ export default function TableList() {
     sorting,
   });
 
-  // Handle Delete
-  const handleDeleteCustomer = async (userId, router) => {
-    const confirmed = confirm("Are you sure you want to delete this customer?");
-    if (!confirmed) return;
+  // Memoized URL param updater
+  const updateUrlParams = useCallback(
+    (key, value) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (!value) params.delete(key);
+      else params.set(key, value);
+      router.replace(`${pathname}?${params.toString()}`);
+    },
+    [searchParams, router, pathname]
+  );
 
-    try {
-      const res = await fetch(`/api/dashboard/customers/${userId}`, {
-        method: "DELETE",
-      });
+  // Handle Delete Customers
+  function DeleteCustomerDialog({ userId, setUsers }) {
+    const router = useRouter();
 
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to delete");
+    const handleDelete = async () => {
+      try {
+        await handleDeleteCustomer(userId, router, setUsers);
+        toast.success("Customer deleted");
+      } catch (error) {
+        toast.error("Failed to delete customer");
+        console.error(error);
       }
+    };
 
-      toast.success("Customer deleted successfully");
-      setUsers((prev) => prev.filter((user) => user.user_id !== userId));
-    } catch (err) {
-      toast.error(err.message || "Failed to delete customer");
-    }
-  };
+    return (
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <DropdownMenuItem
+            className="text-red-500"
+            aria-label={`Delete customer ${userId}`}
+          >
+            Delete
+          </DropdownMenuItem>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              customer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  }
+  // const handleDeleteCustomer = useCallback(
+  //   async (userId) => {
+  //     const confirmed = confirm(
+  //       "Are you sure you want to delete this customer?"
+  //     );
+  //     if (!confirmed) return;
+
+  //     try {
+  //       const res = await fetch(`/api/dashboard/customers/${userId}`, {
+  //         method: "DELETE",
+  //       });
+
+  //       if (!res.ok) {
+  //         const error = await res.json();
+  //         throw new Error(error.error || "Failed to delete");
+  //       }
+
+  //       toast.success("Customer deleted successfully");
+  //       setUsers((prev) => prev.filter((user) => user.user_id !== userId));
+  //     } catch (err) {
+  //       toast.error(err.message || "Failed to delete customer");
+  //     }
+  //   },
+  //   [setUsers]
+  // );
 
   // Column order state
   const [columnOrder, setColumnOrder] = useState(() => [
@@ -281,25 +378,6 @@ export default function TableList() {
       },
     }),
     useSensor(KeyboardSensor)
-  );
-
-  // URL param updater
-  const updateUrlParams = useCallback(
-    (key, value) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (
-        value === undefined ||
-        value === null ||
-        value === "" ||
-        value === false
-      ) {
-        params.delete(key);
-      } else {
-        params.set(key, value);
-      }
-      router.replace(`${pathname}?${params.toString()}`);
-    },
-    [searchParams, router, pathname]
   );
 
   // Columns definition
@@ -397,7 +475,7 @@ export default function TableList() {
               toast.success(`Gender updated to ${gender.toLowerCase()}`);
 
               // Update setUsers
-              setUsers((prevUsers) =>
+              setUsers?.((prevUsers) =>
                 prevUsers.map((user) =>
                   user.id === userId ? { ...user, gender } : user
                 )
@@ -458,17 +536,14 @@ export default function TableList() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-32">
+              {/* Edit Button */}
               <DropdownMenuItem
-                onClick={() =>
-                  router.push(
-                    `/dashboard/customers/edit/${row.original.user_id}`
-                  )
-                }
-                aria-label={`Edit customer ${row.original.user_id}`}
+                onClick={() => handleEditClick(row.original.user_id)}
               >
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              {/* Delete Button */}
               <DropdownMenuItem
                 className="text-red-500"
                 onClick={() =>
@@ -483,7 +558,7 @@ export default function TableList() {
         ),
       },
     ],
-    [router]
+    [router, setUsers]
   );
 
   // Initialize table
@@ -531,6 +606,32 @@ export default function TableList() {
   };
 
   //  pagination with ellipsis
+  // const paginationItems = useMemo(() => {
+  //   const totalPages = Math.ceil(totalCount / pageSize);
+  //   if (totalPages <= 1) return [];
+
+  //   const current = pageIndex + 1;
+  //   const pages = [];
+  //   const showLeftEllipsis = current > 3;
+  //   const showRightEllipsis = current < totalPages - 2;
+
+  //   if (totalPages <= 5) {
+  //     return Array.from({ length: totalPages }, (_, i) => i + 1);
+  //   }
+
+  //   pages.push(1);
+  //   if (showLeftEllipsis) pages.push("left-ellipsis");
+
+  //   const start = Math.max(2, current - 1);
+  //   const end = Math.min(totalPages - 1, current + 1);
+  //   for (let i = start; i <= end; i++) pages.push(i);
+
+  //   if (showRightEllipsis) pages.push("right-ellipsis");
+  //   if (totalPages > 1) pages.push(totalPages);
+
+  //   return pages;
+  // }, [pageIndex, totalCount, pageSize]);
+
   const paginationItems = useMemo(() => {
     const totalPages = Math.ceil(totalCount / pageSize);
     if (totalPages <= 1) return [];
@@ -561,60 +662,91 @@ export default function TableList() {
     return pages;
   }, [pageIndex, totalCount, pageSize]);
 
-  // Handle row reordering
+  // Handle Drag Start
   const handleDragStart = useCallback((event) => {
     setActiveRow(event.active.id);
   }, []);
 
-  // Handle Drag End - Update sort_order in backend
+  // Handle Drag End
   const handleDragEnd = useCallback(
     async (event) => {
       const { active, over } = event;
       setActiveRow(null);
 
-      if (active && over && active.id !== over.id) {
-        const oldIndex = users.findIndex((u) => u.id === active.id);
-        const newIndex = users.findIndex((u) => u.id === over.id);
+      if (!active || !over || active.id === over.id) return;
 
-        if (oldIndex === -1 || newIndex === -1) return;
+      const oldIndex = users.findIndex((u) => u.id === active.id);
+      const newIndex = users.findIndex((u) => u.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
 
-        // Create new array with updated positions
-        const newUsers = arrayMove(users, oldIndex, newIndex);
+      const newUsers = arrayMove(users, oldIndex, newIndex);
+      const updatedUsers = newUsers.map((user, index) => ({
+        ...user,
+        sort_order: index,
+      }));
 
-        // Update sort_order for all affected rows
-        const updatedUsers = newUsers.map((user, index) => ({
-          ...user,
-          sort_order: index,
-        }));
+      // Optimistic update
+      setUsers(updatedUsers);
 
-        setUsers(updatedUsers);
+      try {
+        const res = await fetch("/api/dashboard/customers/reorder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            updatedRows: updatedUsers.map((user) => ({
+              id: user.id,
+              sort_order: user.sort_order,
+            })),
+          }),
+        });
 
-        try {
-          // Send all rows to backend to update their sort_order
-          const res = await fetch("/api/dashboard/customers/reorder", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              updatedRows: updatedUsers.map((user) => ({
-                id: user.id,
-                sort_order: user.sort_order,
-              })),
-            }),
-          });
-
-          if (!res.ok) throw new Error("Failed to reorder");
-
-          const result = await res.json();
-          console.log("Reorder successful:", result);
-        } catch (err) {
-          console.error("Reorder error:", err);
-          // Revert to original order if update fails
-          setUsers([...users]);
-        }
+        if (!res.ok) throw new Error("Failed to reorder");
+      } catch (err) {
+        console.error("Reorder error:", err);
+        setUsers([...users]);
       }
     },
     [users, setUsers]
   );
+
+  // Render function for table body
+  const renderTableBody = useMemo(() => {
+    if (loading) {
+      return Array.from({ length: 5 }).map((_, i) => (
+        <TableRow key={`skeleton-${i}`} className="animate-pulse">
+          {columns.map((column) => (
+            <TableCell key={`${i}-${column.id}`} className="px-4 py-2">
+              <Skeleton className="h-4 w-full rounded-md" />
+            </TableCell>
+          ))}
+        </TableRow>
+      ));
+    }
+
+    if (users.length === 0) {
+      return (
+        <TableRow>
+          <TableCell
+            colSpan={columns.length}
+            className="text-center py-6 text-sm text-muted-foreground"
+          >
+            No customers found.
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    return (
+      <SortableContext
+        items={users.map((user) => user.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {table.getRowModel().rows.map((row) => (
+          <DraggableTableRow key={row.id} row={row} />
+        ))}
+      </SortableContext>
+    );
+  }, [loading, users, columns, table]);
 
   // Export functions
   const handleExport = (type) => {
@@ -641,7 +773,7 @@ export default function TableList() {
           style={{ cursor: "text" }}
         />
 
-        {/* Customize Columns */}
+        {/* Customize Columns toggle & export */}
         <div className="flex items-center gap-2">
           {/* Column toggle */}
           <DropdownMenu>
@@ -693,7 +825,6 @@ export default function TableList() {
           </DropdownMenu>
         </div>
       </div>
-
       {/* Data Table with Drag & Drop */}
       <div className="overflow-x-auto rounded-lg border">
         <DndContext
@@ -735,40 +866,7 @@ export default function TableList() {
             </TableHeader>
 
             {/* Body */}
-            <TableBody>
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={`skeleton-row-${i}`} className="animate-pulse">
-                    {columns.map((column, j) => (
-                      <TableCell
-                        key={`skeleton-cell-${i}-${column.id || j}`}
-                        className="px-4 py-2"
-                      >
-                        <Skeleton className="h-4 w-full rounded-md" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : users.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="text-center py-6 text-muted-foreground text-sm"
-                  >
-                    No customers found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                <SortableContext
-                  items={users.map((user) => user.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {table.getRowModel().rows.map((row) => (
-                    <DraggableTableRow key={row.id} row={row} />
-                  ))}
-                </SortableContext>
-              )}
-            </TableBody>
+            <TableBody>{renderTableBody}</TableBody>
           </Table>
 
           <DragOverlay>
@@ -818,13 +916,23 @@ export default function TableList() {
           </DragOverlay>
         </DndContext>
       </div>
-
       {/* Pagination */}
       <div className="flex items-center justify-between px-4 mt-6">
-        {/* Show filtered count */}
-        <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
+        {/* Selected & Total Rows */}
+        <div>
+          <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
+            {table.getFilteredSelectedRowModel().rows.length} of{" "}
+            {table.getFilteredRowModel().rows.length} row(s) selected
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground font-medium">
+              Total Rows:
+            </span>
+            <span className="text-primary font-semibold">
+              {totalCount.toLocaleString()}
+            </span>
+            rows
+          </div>
         </div>
         {/* Pagination controls */}
         <div className="flex w-full items-center gap-8 lg:w-fit">
@@ -853,7 +961,7 @@ export default function TableList() {
               </SelectContent>
             </Select>
           </div>
-          {/* Pager Per Count */}
+          {/* Current page info */}
           <div className="flex w-fit items-center justify-center text-sm font-medium">
             Page {table.getState().pagination.pageIndex + 1} of{" "}
             {table.getPageCount()}
@@ -922,6 +1030,17 @@ export default function TableList() {
           </div>
         </div>
       </div>
+      {/* EditDailog */}
+      <EditCustomerModal
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        userId={editUserId}
+        onSuccess={(updatedUser) => {
+          setUsers((prev) =>
+            prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+          );
+        }}
+      />
     </div>
   );
 }

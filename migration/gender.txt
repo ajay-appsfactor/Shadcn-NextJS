@@ -11,3 +11,7 @@ WHERE gender IS NULL;
 ALTER TABLE customer
 ADD CONSTRAINT gender_check
 CHECK (gender IN ('MALE', 'FEMALE', 'OTHER', 'UNKNOWN'));
+
+
+2. Column Order & Visibility Persistence (optional improvement)
+To persist user-chosen column visibility and order to localStorage or backend:

@@ -939,3 +939,37 @@ export default function TableList() {
 
 
 // Final Status Gender 
+
+// chatgpt pagination logic
+const paginationItems = useMemo(() => {
+  const totalPages = Math.ceil(totalCount / pageSize);
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  const current = pageIndex + 1;
+  const pages = [];
+
+  pages.push(1);
+
+  if (current > 4) {
+    pages.push("left-ellipsis");
+  }
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(totalPages - 1, current + 1);
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+
+  if (current < totalPages - 3) {
+    pages.push("right-ellipsis");
+  }
+
+  pages.push(totalPages);
+
+  return pages;
+}, [pageIndex, totalCount, pageSize]);
+
+

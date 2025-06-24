@@ -60,7 +60,7 @@ const AppSidebar = () => {
         const res = await fetch("/api/auth/me");
         if (!res.ok) throw new Error("User not authenticated");
         const data = await res.json();
-        console.log(data);
+        // console.log(data);
         setUser(data.user);
       } catch (err) {
         // console.error("Failed to load user", err);

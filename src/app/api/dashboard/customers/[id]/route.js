@@ -34,6 +34,8 @@ export async function PUT(req, { params }) {
   const { id } = await params;
   const data = await req.json();
 
+  console.log("update customer id : ", id);
+
   const {
     first_name,
     last_name,
