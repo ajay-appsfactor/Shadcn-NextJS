@@ -252,7 +252,7 @@ export default function TableList() {
     searchParams.get("search") || ""
   );
   const [pageIndex, setPageIndex] = useState(
-    Number(searchParams.get("page")) - 1 || 0
+    Math.max(Number(searchParams.get("page")) - 1 || 0, 0)
   );
   const [pageSize, setPageSize] = useState(
     Number(searchParams.get("pageSize")) || 5
@@ -268,69 +268,42 @@ export default function TableList() {
     sorting,
   });
 
+  // Set default page parameter if none exists
+  useEffect(() => {
+    if (!searchParams.get("page")) {
+      updateUrlParams("page", "1");
+    }
+  }, [searchParams]);
+
   // Memoized URL param updater
   const updateUrlParams = useCallback(
     (key, value) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (!value) params.delete(key);
-      else params.set(key, value);
-      router.replace(`${pathname}?${params.toString()}`);
+      if (value === null || value === undefined || value === "") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+      // Don't update if the URL wouldn't change
+      if (params.toString() !== searchParams.toString()) {
+        router.replace(`${pathname}?${params.toString()}`);
+      }
     },
     [searchParams, router, pathname]
   );
+  // const updateUrlParams = useCallback(
+  //   (key, value) => {
+  //     const params = new URLSearchParams(searchParams.toString());
+  //     if (!value) params.delete(key);
+  //     else params.set(key, value);
+  //     router.replace(`${pathname}?${params.toString()}`);
+  //   },
+  //   [searchParams, router, pathname]
+  // );
 
   // Handle Delete Customers
-  function DeleteCustomerDialog({ userId, setUsers }) {
-    const router = useRouter();
-
-    const handleDelete = async () => {
-      try {
-        await handleDeleteCustomer(userId, router, setUsers);
-        toast.success("Customer deleted");
-      } catch (error) {
-        toast.error("Failed to delete customer");
-        console.error(error);
-      }
-    };
-
-    return (
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <DropdownMenuItem
-            className="text-red-500"
-            aria-label={`Delete customer ${userId}`}
-          >
-            Delete
-          </DropdownMenuItem>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              customer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    );
-  }
   // const handleDeleteCustomer = useCallback(
-  //   async (userId) => {
-  //     const confirmed = confirm(
-  //       "Are you sure you want to delete this customer?"
-  //     );
-  //     if (!confirmed) return;
-
+  //   async (userId, router, setUsers) => {
   //     try {
   //       const res = await fetch(`/api/dashboard/customers/${userId}`, {
   //         method: "DELETE",
@@ -343,12 +316,61 @@ export default function TableList() {
 
   //       toast.success("Customer deleted successfully");
   //       setUsers((prev) => prev.filter((user) => user.user_id !== userId));
+
+  //       // redirect or refresh
+  //       router.refresh();
   //     } catch (err) {
   //       toast.error(err.message || "Failed to delete customer");
   //     }
   //   },
   //   [setUsers]
   // );
+
+  const handleDeleteCustomer = useCallback(
+    async (userId) => {
+      try {
+        const res = await fetch(`/api/dashboard/customers/${userId}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || "Failed to delete");
+        }
+
+        toast.success("Customer deleted successfully");
+
+        // Check if we need to go to previous page
+        const isLastPage =
+          pageIndex + 1 === Math.ceil((totalCount - 1) / pageSize);
+        const isLastItemOnPage = users.length === 1;
+
+        if (isLastPage && isLastItemOnPage && pageIndex > 0) {
+          setPageIndex((prev) => prev - 1);
+          updateUrlParams("page", pageIndex); // Go to previous page
+        }
+
+        // Trigger a refetch by changing a dependency
+        setUsers((prev) => {
+          const newUsers = prev.filter((user) => user.user_id !== userId);
+          return newUsers;
+        });
+
+        router.refresh();
+      } catch (err) {
+        toast.error(err.message || "Failed to delete customer");
+      }
+    },
+    [
+      pageIndex,
+      pageSize,
+      totalCount,
+      updateUrlParams,
+      router,
+      setUsers,
+      users.length,
+    ]
+  );
 
   // Column order state
   const [columnOrder, setColumnOrder] = useState(() => [
@@ -524,41 +546,66 @@ export default function TableList() {
         id: "actions",
         header: "ACTIONS",
         enableSorting: false,
-        cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="data-[state=open]:bg-muted text-muted-foreground flex size-8 cursor-pointer"
-                size="icon"
-              >
-                <EllipsisVertical />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-32">
-              {/* Edit Button */}
-              <DropdownMenuItem
-                onClick={() => handleEditClick(row.original.user_id)}
-              >
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {/* Delete Button */}
-              <DropdownMenuItem
-                className="text-red-500"
-                onClick={() =>
-                  handleDeleteCustomer(row.original.user_id, router, setUsers)
-                }
-                aria-label={`Delete customer ${row.original.user_id}`}
-              >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
+        cell: ({ row }) => {
+          const [open, setOpen] = useState(false);
+
+          return (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="size-8">
+                    <EllipsisVertical />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleEditClick(row.original.user_id)}
+                  >
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-red-500"
+                    onClick={() => setOpen(true)}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <AlertDialog open={open} onOpenChange={setOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete
+                      the customer.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        await handleDeleteCustomer(
+                          row.original.user_id,
+                          router,
+                          setUsers
+                        );
+                        setOpen(false);
+                      }}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          );
+        },
       },
     ],
-    [router, setUsers]
+    [handleDeleteCustomer, setUsers]
   );
 
   // Initialize table
@@ -606,59 +653,29 @@ export default function TableList() {
   };
 
   //  pagination with ellipsis
-  // const paginationItems = useMemo(() => {
-  //   const totalPages = Math.ceil(totalCount / pageSize);
-  //   if (totalPages <= 1) return [];
-
-  //   const current = pageIndex + 1;
-  //   const pages = [];
-  //   const showLeftEllipsis = current > 3;
-  //   const showRightEllipsis = current < totalPages - 2;
-
-  //   if (totalPages <= 5) {
-  //     return Array.from({ length: totalPages }, (_, i) => i + 1);
-  //   }
-
-  //   pages.push(1);
-  //   if (showLeftEllipsis) pages.push("left-ellipsis");
-
-  //   const start = Math.max(2, current - 1);
-  //   const end = Math.min(totalPages - 1, current + 1);
-  //   for (let i = start; i <= end; i++) pages.push(i);
-
-  //   if (showRightEllipsis) pages.push("right-ellipsis");
-  //   if (totalPages > 1) pages.push(totalPages);
-
-  //   return pages;
-  // }, [pageIndex, totalCount, pageSize]);
-
   const paginationItems = useMemo(() => {
     const totalPages = Math.ceil(totalCount / pageSize);
     if (totalPages <= 1) return [];
 
     const current = pageIndex + 1;
     const pages = [];
-
     const showLeftEllipsis = current > 3;
     const showRightEllipsis = current < totalPages - 2;
-    const startPage = Math.max(1, current - 1);
-    const endPage = Math.min(totalPages, current + 1);
 
-    if (!showLeftEllipsis) {
-      for (let i = 1; i <= Math.min(5, totalPages); i++) {
-        pages.push(i);
-      }
-    } else if (!showRightEllipsis) {
-      for (let i = totalPages - 4; i <= totalPages; i++) {
-        if (i > 0) pages.push(i);
-      }
-    } else {
-      pages.push(1);
-      pages.push("left-ellipsis");
-      for (let i = startPage; i <= endPage; i++) pages.push(i);
-      pages.push("right-ellipsis");
-      pages.push(totalPages);
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
+
+    pages.push(1);
+    if (showLeftEllipsis) pages.push("left-ellipsis");
+
+    const start = Math.max(2, current - 1);
+    const end = Math.min(totalPages - 1, current + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+
+    if (showRightEllipsis) pages.push("right-ellipsis");
+    if (totalPages > 1) pages.push(totalPages);
+
     return pages;
   }, [pageIndex, totalCount, pageSize]);
 
@@ -713,7 +730,7 @@ export default function TableList() {
   const renderTableBody = useMemo(() => {
     if (loading) {
       return Array.from({ length: 5 }).map((_, i) => (
-        <TableRow key={`skeleton-${i}`} className="animate-pulse">
+        <TableRow key={`skeleton-${i}`} className="animate-pulse h-12">
           {columns.map((column) => (
             <TableCell key={`${i}-${column.id}`} className="px-4 py-2">
               <Skeleton className="h-4 w-full rounded-md" />
@@ -834,7 +851,7 @@ export default function TableList() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <Table className="min-w-full divide-y divide-gray-200">
+          <Table className="w-full min-w-[900px] table-auto divide-y divide-gray-200">
             {/* Header */}
             <TableHeader className="bg-muted sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
@@ -934,6 +951,7 @@ export default function TableList() {
             rows
           </div>
         </div>
+
         {/* Pagination controls */}
         <div className="flex w-full items-center gap-8 lg:w-fit">
           {/* Rows per page */}
@@ -961,6 +979,7 @@ export default function TableList() {
               </SelectContent>
             </Select>
           </div>
+
           {/* Current page info */}
           <div className="flex w-fit items-center justify-center text-sm font-medium">
             Page {table.getState().pagination.pageIndex + 1} of{" "}
@@ -974,14 +993,16 @@ export default function TableList() {
                 <PaginationItem>
                   <PaginationPrevious
                     onClick={() => {
-                      if (pageIndex > 0) {
+                      if (pageIndex > 0 && !loading) {
                         const newPage = pageIndex - 1;
                         setPageIndex(newPage);
                         updateUrlParams("page", newPage + 1);
                       }
                     }}
                     className={
-                      pageIndex > 0 ? "" : "pointer-events-none opacity-50"
+                      pageIndex > 0 && !loading
+                        ? ""
+                        : "pointer-events-none opacity-50"
                     }
                     href="#"
                   />
@@ -998,8 +1019,10 @@ export default function TableList() {
                         href="#"
                         isActive={page === pageIndex + 1}
                         onClick={() => {
-                          setPageIndex(page - 1);
-                          updateUrlParams("page", page.toString());
+                          if (!loading) {
+                            setPageIndex(page - 1);
+                            updateUrlParams("page", page.toString());
+                          }
                         }}
                       >
                         {page}
@@ -1011,14 +1034,18 @@ export default function TableList() {
                 <PaginationItem>
                   <PaginationNext
                     onClick={() => {
-                      if (pageIndex + 1 < Math.ceil(totalCount / pageSize)) {
+                      if (
+                        pageIndex + 1 < Math.ceil(totalCount / pageSize) &&
+                        !loading
+                      ) {
                         const newPage = pageIndex + 1;
                         setPageIndex(newPage);
                         updateUrlParams("page", newPage + 1);
                       }
                     }}
                     className={
-                      pageIndex + 1 < Math.ceil(totalCount / pageSize)
+                      pageIndex + 1 < Math.ceil(totalCount / pageSize) &&
+                      !loading
                         ? ""
                         : "pointer-events-none opacity-50"
                     }

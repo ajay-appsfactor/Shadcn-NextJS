@@ -218,6 +218,7 @@ export async function GET(req) {
     "first_name",
     "last_name",
     "email",
+    "gender",
     "company",
     "created_at",
     "sort_order",
@@ -282,70 +283,4 @@ export async function GET(req) {
   }
 }
 
-// export async function GET(req) {
-//   const { searchParams } = new URL(req.url);
 
-//   const page = parseInt(searchParams.get("page") || "1");
-//   const limit = parseInt(searchParams.get("limit") || "5");
-//   const offset = (page - 1) * limit;
-
-//   const search = searchParams.get("search") || "";
-//   // const sortBy = searchParams.get("sortBy") || "created_at";
-//   // const sortOrder = searchParams.get("sortOrder") || "desc";
-
-//   const sortBy = searchParams.get("sortBy") || "sort_order";
-//   const sortOrder = searchParams.get("sortOrder") || "asc";
-
-//   // Validate allowed sort columns
-//   const validSorts = [
-//     "id",
-//     "first_name",
-//     "last_name",
-//     "email",
-//     "company",
-//     "created_at",
-//     "sort_order",
-//   ];
-
-//   const orderBy = validSorts.includes(sortBy) ? sortBy : "created_at";
-
-//   //  const orderBy = validSorts.includes(sortBy) ? sortBy : "sort_order";
-//   const orderDirection = sortOrder === "desc" ? "DESC" : "ASC";
-
-//   try {
-//     const queryText = `
-//       SELECT *,sort_order FROM customers
-//       WHERE
-//         first_name ILIKE $1 OR
-//         last_name ILIKE $1 OR
-//         email ILIKE $1 OR
-//         company ILIKE $1
-//       ORDER BY ${orderBy} ${orderDirection}
-//       LIMIT $2 OFFSET $3
-//     `;
-//     const values = [`%${search}%`, limit, offset];
-//     const result = await pool.query(queryText, values);
-
-//     const countResult = await pool.query(
-//       `
-//       SELECT COUNT(*) FROM customers
-//       WHERE
-//         first_name ILIKE $1 OR
-//         last_name ILIKE $1 OR
-//         email ILIKE $1 OR
-//         company ILIKE $1
-//     `,
-//       [`%${search}%`]
-//     );
-
-//     const totalCount = parseInt(countResult.rows[0].count);
-
-//     return Response.json({
-//       users: result.rows,
-//       totalCount,
-//     });
-//   } catch (err) {
-//     console.error("DB error:", err);
-//     return new Response("Internal Server Error", { status: 500 });
-//   }
-// }

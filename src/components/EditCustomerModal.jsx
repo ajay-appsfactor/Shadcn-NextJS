@@ -29,8 +29,8 @@ export function EditCustomerModal({ open, onOpenChange, userId, onSuccess }) {
 
   useEffect(() => {
     if (!open || !userId) return;
-    
-    console.log("Customer Modal id is : ", userId)
+
+    console.log("Customer Modal id is : ", userId);
     const fetchUser = async () => {
       try {
         setLoading(true);
@@ -56,7 +56,7 @@ export function EditCustomerModal({ open, onOpenChange, userId, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    console.log("Check all user data :",user.user_id);
+    console.log("Check all user data :", user.user_id);
 
     try {
       const res = await fetch(`/api/dashboard/customers/${user.user_id}`, {
@@ -155,15 +155,20 @@ export function EditCustomerModal({ open, onOpenChange, userId, onSuccess }) {
                     <SelectItem value="MALE">Male</SelectItem>
                     <SelectItem value="FEMALE">Female</SelectItem>
                     <SelectItem value="OTHER">Other</SelectItem>
+                    <SelectItem value="UNKNOWN">Unknown</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline" className="cursor-pointer">Cancel</Button>
+                <Button variant="outline" className="cursor-pointer">
+                  Cancel
+                </Button>
               </DialogClose>
-              <Button type="submit" className="cursor-pointer">Update</Button>
+              <Button type="submit" className="cursor-pointer">
+                Update
+              </Button>
             </DialogFooter>
           </form>
         ) : (
