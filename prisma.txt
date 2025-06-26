@@ -1,0 +1,69 @@
+0. Install Prisma in nextjs
+npm i prisma 
+
+1. Install Prisma Client in nextjs
+npm install @prisma/client
+
+# npm install prisma @prisma/client
+
+1. Initialize Prisma (schema.prisma + .env)
+npx prisma init
+
+2. Add your PostgreSQL connection string
+Set DATABASE_URL in .env.local
+
+3. Pull existing DB tables → Prisma models
+npx prisma db pull
+
+4. Push Prisma schema → database tables (Use with care)
+npx prisma db push
+
+5. Create migration + push + generate (recommended if starting fresh)
+npx prisma migrate dev --name init
+
+# Reset DB
+npx prisma migrate reset
+
+6. Generate Prisma Client from schema
+npx prisma generate
+
+7. Open visual DB GUI in browser (http://localhost:5555/)
+npx prisma studio
+
+
+NPX. Definition: NPM is a package manager used to install, delete, and update Javascript packages on your machine. NPX is a package executer, and it is used to execute javascript packages directly, without installing them.
+
+
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+
+  // Prisma Commands
+  "prisma:init": "npx prisma init",
+  "prisma:generate": "npx prisma generate",
+  "prisma:studio": "npx prisma studio",
+  "prisma:migrate": "npx prisma migrate dev",
+  "prisma:push": "npx prisma db push",
+  "prisma:reset": "npx prisma migrate reset"
+}
+
+
+npm run prisma:push
+
+npm run prisma:init      # Initialize Prisma
+npm run prisma:migrate   # Run dev migration
+npm run prisma:generate  # Generate Prisma Client
+npm run prisma:studio    # Open DB UI
+npm run prisma:reset     # Reset DB
+
+🔁 When do you need to "run" schema.prisma?
+Situation	Required Command
+🆕 New model added	npx prisma migrate dev --name ... ✅
+✏️ Field added/renamed/removed	npx prisma migrate dev --name ... ✅
+🛠 Existing DB se sync karna ho	npx prisma db pull ✅
+Just generate Prisma Client again	npx prisma generate ✅
+
+
+Database migrations in production
+npx prisma migrate deploy

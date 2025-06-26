@@ -1,0 +1,64 @@
+
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Users{
+  id Int @id @default(autoincrement())
+  first_name String
+  last_name String
+  email String @unique
+  password String
+  customers  Customers[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  deleted_at DateTime?
+}
+
+model Customers{
+  id Int @id @default(autoincrement())
+  user_id Int
+  user    Users     @relation(fields: [user_id], references: [id])
+  first_name String?
+  last_name String?
+  email String? @unique
+  company String?
+  address String?
+  city String?
+  state String?
+  zip Int?
+  country String?
+  phone Int?
+  mobile Int?
+  shipping_first_name String?
+  shipping_last_name String?
+  shipping_company String?
+  shipping_address String?
+  shipping_state String?
+  shipping_zip Int?
+  shipping_country String?
+  shipping_phone Int?
+  shipping_mobile Int?
+  send_invoice String?
+  conformance String?
+  terms String?
+  frieght String?
+  customer_note String? @db.VarChar(250)
+  quality_note String? @db.VarChar(250)
+  accounting_note String? @db.VarChar(250)
+  shipping_note String? @db.VarChar(250)
+  sales_note String? @db.VarChar(250)
+  about String? @db.VarChar(250)
+  sorting Int @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  deleted_at DateTime?
+}
