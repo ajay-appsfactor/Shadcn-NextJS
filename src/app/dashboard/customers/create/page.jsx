@@ -44,11 +44,11 @@ const AddCustomerPage = () => {
       zip: "",
       phone: "",
       mobile: "",
-      sendinvoice: "",
+      send_invoice: "",
       conformance: "",
       password: "",
-      shipping_firstname: "",
-      shipping_lastname: "",
+      shipping_first_name: "",
+      shipping_last_name: "",
       shipping_company: "",
       shipping_address: "",
       shipping_city: "",
@@ -59,7 +59,11 @@ const AddCustomerPage = () => {
       shipping_mobile: "",
       terms: "",
       freight: "",
-      note: "",
+      customer_note: "",
+      quality_note: "",
+      accounting_note: "",
+      shipping_note: "",
+      sales_note: "",
     },
     validationSchema: addCustomerSchema,
     onSubmit: async (values, { resetForm }) => {
@@ -75,10 +79,11 @@ const AddCustomerPage = () => {
 
         if (!res.ok) {
           const errorData = await res.json();
-          toast.error(errorData.message || "Add Customer failed!");
+          console.log(errorData)
+          toast.error(errorData.error);
           return;
         }
-        toast.success("Add Customer Successful!");
+        toast.success("Customer Add Successful!");
         resetForm();
         router.push("/dashboard/customers");
       } catch (err) {
@@ -138,7 +143,7 @@ const AddCustomerPage = () => {
             </label>
             <input
               type="email"
-              className="lowercase mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
+              className=" mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
               {...inputProps("email")}
             />
             {renderError("email")}
@@ -324,15 +329,15 @@ const AddCustomerPage = () => {
             {/* Send Invoice */}
             <div className="mt-4">
               <label
-                htmlFor="sendinvoice"
+                htmlFor="send_invoice"
                 className="block text-sm font-medium"
               >
                 Send Invoice To
               </label>
               <input
                 type="text"
-                name="sendinvoice"
-                value={formik.values.sendinvoice}
+                name="send_invoice"
+                value={formik.values.send_invoice}
                 onChange={formik.handleChange}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
               />
@@ -369,8 +374,8 @@ const AddCustomerPage = () => {
                 </label>
                 <input
                   type="text"
-                  name="shipping_firstname"
-                  value={formik.values.shipping_firstname}
+                  name="shipping_first_name"
+                  value={formik.values.shipping_first_name}
                   onChange={formik.handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -381,8 +386,8 @@ const AddCustomerPage = () => {
                 </label>
                 <input
                   type="text"
-                  name="shipping_lastname"
-                  value={formik.values.shipping_lastname}
+                  name="shipping_last_name"
+                  value={formik.values.shipping_last_name}
                   onChange={formik.handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
@@ -533,32 +538,41 @@ const AddCustomerPage = () => {
 
             {/* Notes with Tabs */}
             <div className="mt-4">
-              <Tabs defaultValue="Customer" className="w-full">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes
-                </label>
+  <Tabs defaultValue="Customer" className="w-full">
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Notes
+    </label>
 
-                <TabsList className="grid grid-cols-5 w-full mb-2">
-                  {noteTabs.map((tab) => (
-                    <TabsTrigger key={tab} value={tab}>
-                      {tab}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+    <TabsList className="grid grid-cols-5 w-full mb-2">
+      {noteTabs.map((tab) => (
+        <TabsTrigger key={tab} value={tab}>
+          {tab}
+        </TabsTrigger>
+      ))}
+    </TabsList>
 
-                {noteTabs.map((tab, index) => (
-                  <TabsContent key={tab} value={tab}>
-                    <textarea
-                      className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 min-h-[50px]"
-                      name="note"
-                      value={formik.values.note}
-                      onChange={formik.handleChange}
-                      placeholder={placeholders[index]}
-                    />
-                  </TabsContent>
-                ))}
-              </Tabs>
-            </div>
+    {noteTabs.map((tab, index) => {
+      const fieldName = `${tab.toLowerCase()}_note`;
+      return (
+        <TabsContent key={tab} value={tab}>
+          <textarea
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 min-h-[50px]"
+            name={fieldName}
+            value={formik.values[fieldName] || ""} 
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            placeholder={placeholders[index]}
+          />
+          {formik.touched[fieldName] && formik.errors[fieldName] && (
+            <p className="text-red-600 text-sm mt-1">
+              {formik.errors[fieldName]}
+            </p>
+          )}
+        </TabsContent>
+      );
+    })}
+  </Tabs>
+</div>
           </div>
         </div>
 

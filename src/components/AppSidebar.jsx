@@ -97,8 +97,17 @@ const AppSidebar = () => {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link href="/">
-                <Image src="/logo1.png" alt="logo" width={100} height={100} />
+              <Link href="/dashboard">
+                <Image
+                  src="/logo1.png"
+                  alt="logo"
+                  width={0}
+                  height={0}
+                  sizes="(max-width: 768px) 100px, 150px"
+                  priority
+                  className="w-[50px] md:w-[100px] h-auto"
+                  draggable={false}
+                />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

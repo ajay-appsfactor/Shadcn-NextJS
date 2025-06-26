@@ -34,23 +34,24 @@ model Customers{
   address String?
   city String?
   state String?
-  zip Int?
+  zip String?
   country String?
-  phone Int?
-  mobile Int?
+  phone String?
+  mobile String?
   shipping_first_name String?
   shipping_last_name String?
   shipping_company String?
   shipping_address String?
+  shipping_city String?
   shipping_state String?
-  shipping_zip Int?
+  shipping_zip String?
   shipping_country String?
-  shipping_phone Int?
-  shipping_mobile Int?
+  shipping_phone String?
+  shipping_mobile String?
   send_invoice String?
   conformance String?
   terms String?
-  frieght String?
+  freight String?
   customer_note String? @db.VarChar(250)
   quality_note String? @db.VarChar(250)
   accounting_note String? @db.VarChar(250)

@@ -142,10 +142,11 @@ function useFetchCustomers({ pageIndex, pageSize, debouncedSearch, sorting }) {
         if (!res.ok) throw new Error("Failed to fetch users");
 
         const data = await res.json();
+        console.log("Data Table :", data);
 
         if (isMounted.current && !controller.signal.aborted) {
           setState({
-            users: Array.isArray(data.users) ? data.users : [],
+            users: Array.isArray(data.customers) ? data.customers : [],
             totalCount: data.totalCount || 0,
             loading: false,
             error: null,
@@ -351,10 +352,7 @@ export default function TableList() {
         }
 
         // Trigger a refetch by changing a dependency
-        setUsers((prev) => {
-          const newUsers = prev.filter((user) => user.user_id !== userId);
-          return newUsers;
-        });
+        setUsers((prev) => prev.filter((user) => user.id !== userId));
 
         router.refresh();
       } catch (err) {
@@ -938,8 +936,8 @@ export default function TableList() {
         {/* Selected & Total Rows */}
         <div>
           <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected
+            {table.getFilteredSelectedRowModel().rows.length} of {users.length}{" "}
+            row(s) selected
           </div>
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground font-medium">

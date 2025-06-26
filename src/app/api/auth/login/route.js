@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
-import pool from '@/lib/db';
-import bcrypt from 'bcryptjs';
-import { createToken } from '@/lib/auth';
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { createToken } from "@/lib/auth";
+import { cookieOptions } from "@/lib/cookieOptions";
 
 export async function POST(request) {
   try {
@@ -10,41 +11,49 @@ export async function POST(request) {
 
     const trimmedEmail = email.trim().toLowerCase();
 
-    // check if user exists
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [trimmedEmail]);
+    // 🔍 Check if user exists in database
+    const user = await prisma.users.findUnique({
+      where: { email: trimmedEmail },
+    });
 
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+    if (!user) {
+      return NextResponse.json(
+        { error: "Invalid email or password" },
+        { status: 401 }
+      );
     }
-
-    const user = result.rows[0];
 
     // Compare password
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+      return NextResponse.json(
+        { error: "Invalid email or password" },
+        { status: 401 }
+      );
     }
+
     // Generate JWT token
     const token = createToken({ id: user.id, email: user.email });
 
     const response = NextResponse.json(
-      { message: 'Login successful' },
+      { message: "Login successful" },
       { status: 200 }
     );
 
-    response.cookies.set('token', token, {
-      httpOnly: true,
-      path: '/',
-      secure: false,
-      maxAge: 60 * 60 * 24, // 1 day
+    // Set auth token in cookie
+    response.cookies.set("token", token, {
+      httpOnly: cookieOptions.httpOnly,
+      secure: cookieOptions.secure,
+      path: cookieOptions.path,
+      maxAge: cookieOptions.maxAge,
     });
 
     return response;
-
   } catch (error) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
     return NextResponse.json(
-      { error: 'Something went wrong. Please try again.' },
-      { status: 500 });
+      { error: "Something went wrong. Please try again." },
+      { status: 500 }
+    );
   }
 }
